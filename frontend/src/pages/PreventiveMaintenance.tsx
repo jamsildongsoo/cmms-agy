@@ -318,8 +318,8 @@ export default function PreventiveMaintenance() {
                     <th className="p-3 font-semibold">설비명</th>
                     <th className="p-3 font-semibold">점검유형</th>
                     <th className="p-3 font-semibold">주기</th>
-                    <th className="p-3 font-semibold">마지막 점검일</th>
-                    <th className="p-3 font-semibold">차기 점검일</th>
+                    <th className="p-3 font-semibold">지난 점검일</th>
+                    <th className="p-3 font-semibold">다음 점검일</th>
                     <th className="p-3 font-semibold text-right">점검수행</th>
                   </tr>
                 </thead>
@@ -486,95 +486,122 @@ export default function PreventiveMaintenance() {
                 </div>
               </div>
 
-              {/* Input Form Grid (Hidden during pure print view of items if desired, but keep simple) */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-l-2 border-blue-500 pl-2 print:text-slate-800 print:border-slate-400">점검 기록 헤더 정보</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={equipmentName}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-slate-200 outline-none disabled:opacity-80 print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">점검 일자 <span className="text-rose-500 print:hidden">*</span></label>
-                    <input
-                      type="date"
-                      required
-                      value={workDate}
-                      onChange={(e) => setWorkDate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">점검자 ID</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-600">
-                        <User size={14} />
+              {/* Input Form Grid divided into [일반 정보], [작업 정보], [법정 인증 정보] */}
+              <div className="space-y-6">
+                {/* [일반 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider pl-2 border-l-2 border-blue-500 print:text-slate-800 print:border-slate-400">
+                    [일반 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비</label>
+                        <input
+                          type="text"
+                          disabled
+                          value={equipmentName}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-slate-200 outline-none disabled:opacity-80 print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
                       </div>
-                      <input
-                        type="text"
-                        disabled
-                        value={workerId}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-8 pr-3 text-slate-200 outline-none disabled:opacity-80 print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">점검자 ID</label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-600">
+                            <User size={14} />
+                          </div>
+                          <input
+                            type="text"
+                            disabled
+                            value={workerId}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-8 pr-3 text-slate-200 outline-none disabled:opacity-80 print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">종합 판정</label>
-                    <select
-                      value={judgeCode}
-                      onChange={(e) => setJudgeCode(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      <option value="OK">양호 (OK)</option>
-                      <option value="NG">불량 (NG)</option>
-                      <option value="OTHER">기타</option>
-                    </select>
+                </div>
+
+                {/* [작업 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider pl-2 border-l-2 border-emerald-500 print:text-slate-800 print:border-slate-400">
+                    [작업 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">점검 일자 <span className="text-rose-500 print:hidden">*</span></label>
+                        <input
+                          type="date"
+                          required
+                          value={workDate}
+                          onChange={(e) => setWorkDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">종합 판정</label>
+                        <select
+                          value={judgeCode}
+                          onChange={(e) => setJudgeCode(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          <option value="OK">양호 (OK)</option>
+                          <option value="NG">불량 (NG)</option>
+                          <option value="OTHER">기타</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">특이 사항 (비고)</label>
+                        <textarea
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          placeholder="특이사항 상세 기술"
+                          rows={2}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Optional Legal Inspection Certificates */}
-                  <div className="sm:col-span-2 md:col-span-1">
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">법정검사 인증번호</label>
-                    <input
-                      type="text"
-                      value={certNumber}
-                      onChange={(e) => setCertNumber(e.target.value)}
-                      placeholder="인증번호 (법정검사 시)"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">인증 기관</label>
-                    <input
-                      type="text"
-                      value={certAgency}
-                      onChange={(e) => setCertAgency(e.target.value)}
-                      placeholder="인증 기관"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">인증 유효 만료일</label>
-                    <input
-                      type="date"
-                      value={certExpireDate}
-                      onChange={(e) => setCertExpireDate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div className="sm:col-span-4">
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">특이 사항 (비고)</label>
-                    <textarea
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="특이사항 상세 기술"
-                      rows={2}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
+                </div>
+
+                {/* [법정 인증 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider pl-2 border-l-2 border-amber-500 print:text-slate-800 print:border-slate-400">
+                    [법정 인증 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">법정검사 인증번호</label>
+                        <input
+                          type="text"
+                          value={certNumber}
+                          onChange={(e) => setCertNumber(e.target.value)}
+                          placeholder="인증번호 (법정검사 시)"
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">인증 기관</label>
+                        <input
+                          type="text"
+                          value={certAgency}
+                          onChange={(e) => setCertAgency(e.target.value)}
+                          placeholder="인증 기관"
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">인증 유효 만료일</label>
+                        <input
+                          type="date"
+                          value={certExpireDate}
+                          onChange={(e) => setCertExpireDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -27,6 +27,20 @@ export default function Login() {
   const [loginCompanyId, setLoginCompanyId] = useState('');
   const [loginUserId, setLoginUserId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('remember_login') === 'true';
+  });
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    const remember = localStorage.getItem('remember_login') === 'true';
+    if (remember) {
+      const savedCompanyId = localStorage.getItem('saved_company_id');
+      const savedUserId = localStorage.getItem('saved_user_id');
+      if (savedCompanyId) setLoginCompanyId(savedCompanyId);
+      if (savedUserId) setLoginUserId(savedUserId);
+    }
+  }, []);
 
   // SignUp form state
   const [signupCompanyId, setSignupCompanyId] = useState('');
@@ -49,8 +63,16 @@ export default function Login() {
     setIsLoading(true);
     const success = await login(loginCompanyId, loginUserId, loginPassword);
     setIsLoading(false);
-    if (!success) {
-      // Error message is handled by store
+    if (success) {
+      if (rememberMe) {
+        localStorage.setItem('saved_company_id', loginCompanyId);
+        localStorage.setItem('saved_user_id', loginUserId);
+        localStorage.setItem('remember_login', 'true');
+      } else {
+        localStorage.removeItem('saved_company_id');
+        localStorage.removeItem('saved_user_id');
+        localStorage.setItem('remember_login', 'false');
+      }
     }
   };
 
@@ -186,6 +208,18 @@ export default function Login() {
               </div>
             </div>
 
+            <div className="flex items-center">
+              <label className="flex items-center space-x-2 text-slate-400 hover:text-slate-300 cursor-pointer select-none text-xs">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-slate-800 bg-slate-950 text-blue-500 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                />
+                <span>회사 코드 및 아이디 저장</span>
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading}
@@ -194,6 +228,7 @@ export default function Login() {
               <span>{isLoading ? '로그인 중...' : '로그인'}</span>
               {!isLoading && <ChevronRight size={16} />}
             </button>
+
 
             <div className="text-center mt-6">
               <span className="text-slate-500 text-xs mr-2">아직 계정이 없으신가요?</span>

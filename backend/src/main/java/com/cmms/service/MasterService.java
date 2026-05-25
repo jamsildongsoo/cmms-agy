@@ -31,12 +31,39 @@ public class MasterService {
     // ==========================================
     @Transactional(readOnly = true)
     public List<Equipment> getEquipmentsByCompany(String companyId) {
-        return equipmentRepository.findByCompanyIdAndDeleteYn(companyId, "N");
+        List<Equipment> list = equipmentRepository.findByCompanyIdAndDeleteYn(companyId, "N");
+        fillCheckDates(companyId, list);
+        return list;
     }
 
     @Transactional(readOnly = true)
     public List<Equipment> getEquipmentsByPlant(String companyId, String plantId) {
-        return equipmentRepository.findByCompanyIdAndPlantIdAndDeleteYn(companyId, plantId, "N");
+        List<Equipment> list = equipmentRepository.findByCompanyIdAndPlantIdAndDeleteYn(companyId, plantId, "N");
+        fillCheckDates(companyId, list);
+        return list;
+    }
+
+    private void fillCheckDates(String companyId, List<Equipment> list) {
+        for (Equipment eq : list) {
+            List<EquipmentCheckCycle> cycles = equipmentCheckCycleRepository
+                    .findByCompanyIdAndPlantIdAndEquipmentIdAndDeleteYn(companyId, eq.getPlantId(), eq.getId(), "N");
+            if (cycles != null && !cycles.isEmpty()) {
+                LocalDate last = cycles.stream()
+                        .map(EquipmentCheckCycle::getLastCheckDate)
+                        .filter(java.util.Objects::nonNull)
+                        .max(LocalDate::compareTo)
+                        .orElse(null);
+
+                LocalDate next = cycles.stream()
+                        .map(EquipmentCheckCycle::getNextCheckDate)
+                        .filter(java.util.Objects::nonNull)
+                        .min(LocalDate::compareTo)
+                        .orElse(null);
+
+                eq.setLastCheckDate(last);
+                eq.setNextCheckDate(next);
+            }
+        }
     }
 
     @Transactional(readOnly = true)
@@ -187,9 +214,9 @@ public class MasterService {
         
         // UTF-8 BOM 추가 (Excel 깨짐 방지)
         writer.write('\ufeff');
-        writer.write("설비코드,설비명,플랜트,설치위치,설비타입,설치일자,작업허가대상,제조사,모델,일련번호,비고\n");
+        writer.write("설비코드,설비명,플랜트,설치위치,설비타입,설치일자,작업허가대상,제조사,모델,일련번호,비고,지난점검일,다음점검일\n");
         for (Equipment eq : list) {
-            writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
                     escapeCsv(eq.getId()),
                     escapeCsv(eq.getName()),
                     escapeCsv(eq.getPlantId()),
@@ -200,7 +227,9 @@ public class MasterService {
                     escapeCsv(eq.getMakerName()),
                     escapeCsv(eq.getModel()),
                     escapeCsv(eq.getSerialNumber()),
-                    escapeCsv(eq.getRemarks())
+                    escapeCsv(eq.getRemarks()),
+                    eq.getLastCheckDate() != null ? eq.getLastCheckDate().toString() : "",
+                    eq.getNextCheckDate() != null ? eq.getNextCheckDate().toString() : ""
             ));
         }
         return writer.toString();

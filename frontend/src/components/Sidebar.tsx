@@ -1,6 +1,5 @@
-import { useAuthStore } from '../store/useAuthStore';
 import { 
-  Wrench, Package, ClipboardList, FileSignature, 
+  Wrench, Package, ClipboardList, FileSignature,  
   Layers, Bell, User, LayoutDashboard
 } from 'lucide-react';
 
@@ -10,7 +9,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
-  const { user } = useAuthStore();
+
 
   const menuItems = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },

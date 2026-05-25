@@ -493,148 +493,177 @@ export default function WorkOrder() {
                 </div>
               </div>
 
-              {/* Input Form Grid */}
-              <div className="space-y-4">
-                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-l-2 border-blue-500 pl-2 print:text-slate-800 print:border-slate-400">작업 기본 정보</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">지시명 (제목) <span className="text-rose-500 print:hidden">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="예: 3호기 순환펌프 메카니컬 씰 교체 작업"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비 <span className="text-rose-500 print:hidden">*</span></label>
-                    <select
-                      value={equipmentId}
-                      onChange={(e) => handleEquipmentChange(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      {equipments.map(eq => (
-                        <option key={eq.id} value={eq.id}>{eq.name} [{eq.id}]</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 단계</label>
-                    <select
-                      value={stepStage}
-                      onChange={(e) => setStepStage(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      <option value="P">작업 계획/지시 (P)</option>
-                      <option value="R">작업 실적/완료 (R)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 구분</label>
-                    <select
-                      value={woTypeCode}
-                      onChange={(e) => setWoTypeCode(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      <option value="BM">고장정비 (BM)</option>
-                      <option value="PM">예방보전 (PM)</option>
-                      <option value="CM">개조/개선 (CM)</option>
-                      <option value="ETC">기타 작업</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">담당 부서 <span className="text-rose-500 print:hidden">*</span></label>
-                    <select
-                      value={departmentId}
-                      onChange={(e) => setDepartmentId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      {depts.map(d => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">계획/수행 일자</label>
-                    <input
-                      type="date"
-                      value={workDate}
-                      onChange={(e) => setWorkDate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">담당 작업자</label>
-                    <select
-                      value={workerId}
-                      onChange={(e) => setWorkerId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    >
-                      <option value="">(미배정)</option>
-                      {usersList.map(u => (
-                        <option key={u.id} value={u.id}>{u.name} [{u.id}]</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">외주/자재 비용 (원)</label>
-                    <input
-                      type="number"
-                      value={cost}
-                      onChange={(e) => setCost(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">소요 공수시간(M/H)</label>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={manHours}
-                        onChange={(e) => setManHours(Number(e.target.value))}
-                        className="flex-1 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                      <select
-                        value={manHoursUnit}
-                        onChange={(e) => setManHoursUnit(e.target.value)}
-                        className="w-16 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-1 text-slate-300 text-center outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      >
-                        <option value="H">시간</option>
-                        <option value="D">일(Day)</option>
-                      </select>
+              {/* Input Form Grid divided into [일반 정보], [작업 정보], [기타 정보] */}
+              <div className="space-y-6">
+                {/* [일반 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider pl-2 border-l-2 border-blue-500 print:text-slate-800 print:border-slate-400">
+                    [일반 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                      <div className="sm:col-span-2 md:col-span-3">
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">지시명 (제목) <span className="text-rose-500 print:hidden">*</span></label>
+                        <input
+                          type="text"
+                          required
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="예: 3호기 순환펌프 메카니컬 씰 교체 작업"
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비 <span className="text-rose-500 print:hidden">*</span></label>
+                        <select
+                          value={equipmentId}
+                          onChange={(e) => handleEquipmentChange(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          {equipments.map(eq => (
+                            <option key={eq.id} value={eq.id}>{eq.name} [{eq.id}]</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">담당 부서 <span className="text-rose-500 print:hidden">*</span></label>
+                        <select
+                          value={departmentId}
+                          onChange={(e) => setDepartmentId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          {depts.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 구분</label>
+                        <select
+                          value={woTypeCode}
+                          onChange={(e) => setWoTypeCode(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          <option value="BM">고장정비 (BM)</option>
+                          <option value="PM">예방보전 (PM)</option>
+                          <option value="CM">개조/개선 (CM)</option>
+                          <option value="ETC">기타 작업</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 단계</label>
+                        <select
+                          value={stepStage}
+                          onChange={(e) => setStepStage(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          <option value="P">작업 계획/지시 (P)</option>
+                          <option value="R">작업 실적/완료 (R)</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">연계 참조번호 / 참조모듈</label>
-                    <div className="flex gap-1.5 font-mono text-[10px]">
-                      <input
-                        type="text"
-                        placeholder="참조번호"
-                        value={refNo}
-                        onChange={(e) => setRefNo(e.target.value)}
-                        className="w-2/3 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-2 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                      <input
-                        type="text"
-                        placeholder="모듈"
-                        value={refModule}
-                        onChange={(e) => setRefModule(e.target.value)}
-                        className="w-1/3 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-2 text-slate-200 text-center outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
+                </div>
+
+                {/* [작업 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider pl-2 border-l-2 border-emerald-500 print:text-slate-800 print:border-slate-400">
+                    [작업 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">계획/수행 일자</label>
+                        <input
+                          type="date"
+                          value={workDate}
+                          onChange={(e) => setWorkDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">담당 작업자</label>
+                        <select
+                          value={workerId}
+                          onChange={(e) => setWorkerId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        >
+                          <option value="">(미배정)</option>
+                          {usersList.map(u => (
+                            <option key={u.id} value={u.id}>{u.name} [{u.id}]</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">소요 공수시간(M/H)</label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={manHours}
+                            onChange={(e) => setManHours(Number(e.target.value))}
+                            className="flex-1 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                          <select
+                            value={manHoursUnit}
+                            onChange={(e) => setManHoursUnit(e.target.value)}
+                            className="w-16 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-1 text-slate-300 text-center outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          >
+                            <option value="H">시간</option>
+                            <option value="D">일(Day)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">외주/자재 비용 (원)</label>
+                        <input
+                          type="number"
+                          value={cost}
+                          onChange={(e) => setCost(Number(e.target.value))}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                      <div className="hidden print:block">
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">연계 참조번호 / 참조모듈</label>
+                        <div className="flex gap-1.5 font-mono text-[10px]">
+                          <input
+                            type="text"
+                            placeholder="참조번호"
+                            disabled
+                            value={refNo}
+                            className="w-2/3 bg-slate-950 border border-slate-800 rounded-lg py-2 px-2 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                          <input
+                            type="text"
+                            placeholder="모듈"
+                            disabled
+                            value={refModule}
+                            className="w-1/3 bg-slate-950 border border-slate-800 rounded-lg py-2 px-2 text-slate-200 text-center outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="sm:col-span-4">
-                    <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 특이사항 및 조치 비고</label>
-                    <textarea
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="고장 증상, 원인 분석 및 대책 조치 비고 등을 상세 기술합니다."
-                      rows={2}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
-                    />
+                </div>
+
+                {/* [기타 정보] 섹션 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-2 border-l-2 border-slate-500 print:text-slate-800 print:border-slate-400">
+                    [기타 정보]
+                  </h4>
+                  <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                    <div className="grid grid-cols-1 gap-4 text-xs">
+                      <div>
+                        <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 특이사항 및 조치 비고</label>
+                        <textarea
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          placeholder="고장 증상, 원인 분석 및 대책 조치 비고 등을 상세 기술합니다."
+                          rows={2}
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -271,141 +271,182 @@ export default function Inventory() {
             </div>
 
             <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 mb-1.5">자재 코드 <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    disabled={!!editingId}
-                    value={id}
-                    onChange={(e) => setId(e.target.value)}
-                    placeholder="예: INV_BOLT_M10"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors disabled:opacity-50"
-                  />
+              {/* [기본 정보] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3 border-l-2 border-blue-500 pl-2">
+                  [기본 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">자재 코드 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        disabled={!!editingId}
+                        value={id}
+                        onChange={(e) => setId(e.target.value)}
+                        placeholder="예: INV_BOLT_M10"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">자재 품명 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="예: 육각 볼트 M10 (100mm)"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">자재 구분타입</label>
+                      <select
+                        value={itemTypeCode}
+                        onChange={(e) => setItemTypeCode(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
+                      >
+                        <option value="ITEM_TYPE_01">예비부품 (Spare Part)</option>
+                        <option value="ITEM_TYPE_02">소모성 공구 (Tool)</option>
+                        <option value="ITEM_TYPE_03">부자재 (Material)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">단위</label>
+                      <input
+                        type="text"
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                        placeholder="예: EA, BOX, SET"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">관리 부서</label>
+                      <select
+                        value={departmentId}
+                        onChange={(e) => setDepartmentId(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
+                      >
+                        <option value="">부서 미지정</option>
+                        {depts.map(d => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">자재 품명 <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="예: 육각 볼트 M10 (100mm)"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
+              </div>
+
+              {/* [제조사 및 스펙 정보] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3 border-l-2 border-emerald-500 pl-2">
+                  [제조사 및 스펙 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">제조사</label>
+                      <input
+                        type="text"
+                        value={makerName}
+                        onChange={(e) => setMakerName(e.target.value)}
+                        placeholder="제조사명"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">모델명</label>
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder="모델명"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">일련번호</label>
+                      <input
+                        type="text"
+                        value={serialNumber}
+                        onChange={(e) => setSerialNumber(e.target.value)}
+                        placeholder="Serial Number"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">규격/스펙상세</label>
+                      <input
+                        type="text"
+                        value={spec}
+                        onChange={(e) => setSpec(e.target.value)}
+                        placeholder="예: 탄소강 고장력"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">단위</label>
-                  <input
-                    type="text"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    placeholder="예: EA, BOX, SET"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
+              </div>
+
+              {/* [주문 관리] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-3 border-l-2 border-amber-500 pl-2">
+                  [주문 관리]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">안전 재고 수량</label>
+                      <input
+                        type="number"
+                        value={safetyQty}
+                        onChange={(e) => setSafetyQty(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">재주문 기준수량 (ROP)</label>
+                      <input
+                        type="number"
+                        value={reorderQty}
+                        onChange={(e) => setReorderQty(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">구매 리드타임 (일)</label>
+                      <input
+                        type="number"
+                        value={leadTimeDays}
+                        onChange={(e) => setLeadTimeDays(parseInt(e.target.value) || 0)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">관리 부서</label>
-                  <select
-                    value={departmentId}
-                    onChange={(e) => setDepartmentId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
-                  >
-                    <option value="">부서 미지정</option>
-                    {depts.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">제조사</label>
-                  <input
-                    type="text"
-                    value={makerName}
-                    onChange={(e) => setMakerName(e.target.value)}
-                    placeholder="제조사명"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">모델명</label>
-                  <input
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="모델명"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">일련번호</label>
-                  <input
-                    type="text"
-                    value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    placeholder="Serial Number"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">규격/스펙상세</label>
-                  <input
-                    type="text"
-                    value={spec}
-                    onChange={(e) => setSpec(e.target.value)}
-                    placeholder="예: 탄소강 고장력"
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">안전 재고 수량</label>
-                  <input
-                    type="number"
-                    value={safetyQty}
-                    onChange={(e) => setSafetyQty(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">재주문 기준수량 (ROP)</label>
-                  <input
-                    type="number"
-                    value={reorderQty}
-                    onChange={(e) => setReorderQty(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">구매 리드타임 (일)</label>
-                  <input
-                    type="number"
-                    value={leadTimeDays}
-                    onChange={(e) => setLeadTimeDays(parseInt(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1.5">자재 구분타입</label>
-                  <select
-                    value={itemTypeCode}
-                    onChange={(e) => setItemTypeCode(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
-                  >
-                    <option value="ITEM_TYPE_01">예비부품 (Spare Part)</option>
-                    <option value="ITEM_TYPE_02">소모성 공구 (Tool)</option>
-                    <option value="ITEM_TYPE_03">부자재 (Material)</option>
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-slate-400 mb-1.5">비고 및 특이사항</label>
-                  <textarea
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="특이사항 기록"
-                    rows={2}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors resize-none"
-                  />
+              </div>
+
+              {/* [운영 정보] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 border-l-2 border-indigo-500 pl-2">
+                  [운영 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">비고 및 특이사항</label>
+                      <textarea
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="특이사항 기록"
+                        rows={2}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors resize-none"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </form>

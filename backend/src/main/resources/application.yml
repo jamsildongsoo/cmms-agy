@@ -5,6 +5,11 @@ spring:
   application:
     name: cmms-backend
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+
   datasource:
     url: jdbc:postgresql://localhost:5433/cmms
     username: cmms_user
@@ -29,3 +34,39 @@ spring:
 jwt:
   secret: c3VwZXItc2VjcmV0LWtleS1mb3ItY21tcy1zeXN0ZW0tMzAtdXNlcnMtb3ItbW9yZS1kZXZlbG9wbWVudA== # HS256 알고리즘용 256비트 이상의 base64 인코딩 키
   expiration: 1800000 # 30분 (밀리초)
+
+---
+spring:
+  config:
+    activate:
+      on-profile: supabase
+
+  datasource:
+    url: ${SUPABASE_DB_URL:jdbc:postgresql://aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?ssl=true&sslmode=require}
+    username: ${SUPABASE_DB_USERNAME:postgres.ijerbfupoezugvfrjftg}
+    password: ${SUPABASE_DB_PASSWORD:YOUR_SUPABASE_PASSWORD_HERE}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5 # 세션 풀러 사용에 따른 커넥션 고갈 방지를 위해 5개로 제한
+      minimum-idle: 2
+
+# AWS S3 SDK (Supabase Object Storage 호환) 설정 미리 연동
+cloud:
+  aws:
+    credentials:
+      access-key: ${SUPABASE_STORAGE_ACCESS_KEY:YOUR_S3_ACCESS_KEY_ID_HERE}
+      secret-key: ${SUPABASE_STORAGE_SECRET_KEY:YOUR_S3_SECRET_ACCESS_KEY_HERE}
+    s3:
+      bucket: ${SUPABASE_STORAGE_BUCKET:cmms-attachments}
+    region:
+      static: ap-southeast-1 # 사용자 싱가포르 리전 기준
+      auto: false
+    stack:
+      auto: false
+    endpoint: ${SUPABASE_STORAGE_ENDPOINT:https://ijerbfupoezugvfrjftg.supabase.co/storage/v1/s3}
+    allowed-mimes: ${SUPABASE_STORAGE_ALLOWED_MIMES:image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/x-hwp,application/vnd.hancom.hwp,application/hwp+zip,application/vnd.hancom.hwpx,application/zip,application/x-zip-compressed}
+
+
+
+
+

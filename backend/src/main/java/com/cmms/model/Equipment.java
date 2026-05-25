@@ -56,4 +56,10 @@ public class Equipment extends BaseEntity {
 
     @Column(name = "file_group_id")
     private Long fileGroupId;
+
+    @Transient
+    private LocalDate lastCheckDate;
+
+    @Transient
+    private LocalDate nextCheckDate;
 }

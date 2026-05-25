@@ -618,146 +618,173 @@ export default function WorkPermit() {
                   </div>
                 </div>
 
-                {/* Core Header Fields */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-l-2 border-blue-500 pl-2 print:text-slate-800 print:border-slate-400">작업 안전 허가 정보</h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">허가서 제목 <span className="text-rose-500 print:hidden">*</span></label>
-                      <input
-                        type="text"
-                        required
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="예: 2공장 전기 집진기 내부 쉘프 정비 작업"
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비 <span className="text-rose-500 print:hidden">*</span></label>
-                      <select
-                        value={equipmentId}
-                        onChange={(e) => handleEquipmentChange(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      >
-                        {equipments.map(eq => (
-                          <option key={eq.id} value={eq.id}>{eq.name} [{eq.id}]</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">연계 작업지시서(WO)</label>
-                      <select
-                        value={workOrderId}
-                        onChange={(e) => setWorkOrderId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      >
-                        <option value="">(미연계)</option>
-                        {workOrders.map(wo => (
-                          <option key={wo.id} value={wo.id}>{wo.title} [{wo.id}]</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">담당 부서 <span className="text-rose-500 print:hidden">*</span></label>
-                      <select
-                        value={departmentId}
-                        onChange={(e) => setDepartmentId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      >
-                        {depts.map(d => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">안전 감독자 <span className="text-rose-500 print:hidden">*</span></label>
-                      <select
-                        value={supervisorId}
-                        onChange={(e) => setSupervisorId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      >
-                        {usersList.map(u => (
-                          <option key={u.id} value={u.id}>{u.name} [{u.id}]</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">허가유효 시작 시간</label>
-                      <input
-                        type="datetime-local"
-                        value={startAt}
-                        onChange={(e) => setStartAt(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">허가유효 종료 시간</label>
-                      <input
-                        type="datetime-local"
-                        value={endAt}
-                        onChange={(e) => setEndAt(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                    </div>
-
-                    {/* Checkbox selector for multiple permit types */}
-                    <div className="sm:col-span-4 bg-slate-950 border border-slate-850 p-4 rounded-xl print:bg-slate-50 print:border-slate-300">
-                      <span className="block text-slate-400 mb-2 print:text-slate-700 font-semibold">작업허가 유형 추가 선택 (복수 선택 가능, 일반은 항상 포함)</span>
-                      <div className="flex flex-wrap gap-4">
-                        {['GENERAL', 'FIRE', 'CONFINED', 'ELECTRIC', 'HIGH_PLACE', 'EXCAVATION', 'HEAVY_LOAD'].map(type => {
-                          const isGeneral = type === 'GENERAL';
-                          const isSelected = selectedTypes.includes(type);
-                          return (
-                            <button
-                              type="button"
-                              key={type}
-                              disabled={isGeneral}
-                              onClick={() => handleTypeToggle(type)}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                                isSelected 
-                                  ? 'bg-blue-600/10 text-blue-400 border-blue-600/30' 
-                                  : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed print:border-slate-300 print:text-slate-700'
-                              }`}
-                            >
-                              {isSelected ? <CheckSquare size={13} /> : <Square size={13} />}
-                              <span>{getWpTypeLabel(type)}</span>
-                            </button>
-                          );
-                        })}
+                {/* Input Form Grid divided into [일반 정보], [작업 정보], [기타 정보] */}
+                <div className="space-y-6">
+                  {/* [일반 정보] 섹션 */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider pl-2 border-l-2 border-blue-500 print:text-slate-800 print:border-slate-400">
+                      [일반 정보]
+                    </h4>
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                        <div className="sm:col-span-2 md:col-span-3">
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">허가서 제목 <span className="text-rose-500 print:hidden">*</span></label>
+                          <input
+                            type="text"
+                            required
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="예: 2공장 전기 집진기 내부 쉘프 정비 작업"
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">대상 설비 <span className="text-rose-500 print:hidden">*</span></label>
+                          <select
+                            value={equipmentId}
+                            onChange={(e) => handleEquipmentChange(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          >
+                            {equipments.map(eq => (
+                              <option key={eq.id} value={eq.id}>{eq.name} [{eq.id}]</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">담당 부서 <span className="text-rose-500 print:hidden">*</span></label>
+                          <select
+                            value={departmentId}
+                            onChange={(e) => setDepartmentId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          >
+                            {depts.map(d => (
+                              <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600 font-semibold">안전 감독자 <span className="text-rose-500 print:hidden">*</span></label>
+                          <select
+                            value={supervisorId}
+                            onChange={(e) => setSupervisorId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          >
+                            {usersList.map(u => (
+                              <option key={u.id} value={u.id}>{u.name} [{u.id}]</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2 md:col-span-3">
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">연계 작업지시서(WO)</label>
+                          <select
+                            value={workOrderId}
+                            onChange={(e) => setWorkOrderId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          >
+                            <option value="">(미연계)</option>
+                            {workOrders.map(wo => (
+                              <option key={wo.id} value={wo.id}>{wo.title} [{wo.id}]</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 내용 요약</label>
-                      <textarea
-                        value={workSummary}
-                        onChange={(e) => setWorkSummary(e.target.value)}
-                        placeholder="작업의 목적 및 절차 요약을 기재합니다."
-                        rows={3}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
+                  {/* [작업 정보] 섹션 */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider pl-2 border-l-2 border-emerald-500 print:text-slate-800 print:border-slate-400">
+                      [작업 정보]
+                    </h4>
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">허가유효 시작 시간</label>
+                          <input
+                            type="datetime-local"
+                            value={startAt}
+                            onChange={(e) => setStartAt(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">허가유효 종료 시간</label>
+                          <input
+                            type="datetime-local"
+                            value={endAt}
+                            onChange={(e) => setEndAt(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+
+                        {/* Checkbox selector for multiple permit types */}
+                        <div className="sm:col-span-2 bg-slate-950 border border-slate-850 p-4 rounded-xl print:bg-slate-50 print:border-slate-300">
+                          <span className="block text-slate-400 mb-2 print:text-slate-700 font-semibold">작업허가 유형 추가 선택 (복수 선택 가능, 일반은 항상 포함)</span>
+                          <div className="flex flex-wrap gap-4">
+                            {['GENERAL', 'FIRE', 'CONFINED', 'ELECTRIC', 'HIGH_PLACE', 'EXCAVATION', 'HEAVY_LOAD'].map(type => {
+                              const isGeneral = type === 'GENERAL';
+                              const isSelected = selectedTypes.includes(type);
+                              return (
+                                <button
+                                  type="button"
+                                  key={type}
+                                  disabled={isGeneral}
+                                  onClick={() => handleTypeToggle(type)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                                    isSelected 
+                                      ? 'bg-blue-600/10 text-blue-400 border-blue-600/30' 
+                                      : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed print:border-slate-300 print:text-slate-700'
+                                  }`}
+                                >
+                                  {isSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+                                  <span>{getWpTypeLabel(type)}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">주요 위험 요인</label>
-                      <textarea
-                        value={riskFactors}
-                        onChange={(e) => setRiskFactors(e.target.value)}
-                        placeholder="작업 중 발생할 수 있는 주요 위험 및 유해 요인(화재, 추락, 감전 등)을 기재합니다."
-                        rows={3}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
-                    </div>
-                    <div className="sm:col-span-4">
-                      <label className="block text-slate-400 mb-1.5 print:text-slate-600">핵심 안전 대책</label>
-                      <textarea
-                        value={safetyMeasures}
-                        onChange={(e) => setSafetyMeasures(e.target.value)}
-                        placeholder="위험 요인을 회피하거나 조치하기 위한 물리적 방안 및 관리 대책을 기술합니다."
-                        rows={2}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
-                      />
+                  </div>
+
+                  {/* [기타 정보] 섹션 */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-2 border-l-2 border-slate-500 print:text-slate-800 print:border-slate-400">
+                      [기타 정보]
+                    </h4>
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5 print:bg-white print:border-slate-300">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div className="sm:col-span-1">
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">작업 내용 요약</label>
+                          <textarea
+                            value={workSummary}
+                            onChange={(e) => setWorkSummary(e.target.value)}
+                            placeholder="작업의 목적 및 절차 요약을 기재합니다."
+                            rows={3}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                        <div className="sm:col-span-1">
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">주요 위험 요인</label>
+                          <textarea
+                            value={riskFactors}
+                            onChange={(e) => setRiskFactors(e.target.value)}
+                            placeholder="작업 중 발생할 수 있는 주요 위험 및 유해 요인(화재, 추락, 감전 등)을 기재합니다."
+                            rows={3}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-slate-400 mb-1.5 print:text-slate-600">핵심 안전 대책</label>
+                          <textarea
+                            value={safetyMeasures}
+                            onChange={(e) => setSafetyMeasures(e.target.value)}
+                            placeholder="위험 요인을 회피하거나 조치하기 위한 물리적 방안 및 관리 대책을 기술합니다."
+                            rows={2}
+                            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none print:bg-white print:border-slate-300 print:text-slate-800"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -18,6 +18,8 @@ interface EquipmentType {
   model: string | null;
   serialNumber: string | null;
   remarks: string | null;
+  lastCheckDate: string | null;
+  nextCheckDate: string | null;
 }
 
 interface CheckItem {
@@ -53,7 +55,7 @@ export default function Equipment() {
   const [plantId, setPlantId] = useState('');
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
-  const [eqTypeCode, setEqTypeCode] = useState('EQ_TYPE_01'); // Default
+  const [eqTypeCode, setEqTypeCode] = useState('PUMP'); // Default
   const [installDate, setInstallDate] = useState('');
   const [workPermitYn, setWorkPermitYn] = useState('N');
   const [makerName, setMakerName] = useState('');
@@ -95,7 +97,7 @@ export default function Equipment() {
     setName('');
     setLocation('');
     if (plants.length > 0) setPlantId(plants[0].id);
-    setEqTypeCode('EQ_TYPE_01');
+    setEqTypeCode('PUMP');
     setInstallDate('');
     setWorkPermitYn('N');
     setMakerName('');
@@ -181,7 +183,26 @@ export default function Equipment() {
   const handleCheckCycleChange = (idx: number, field: keyof CheckCycle, val: any) => {
     setCheckCycles(checkCycles.map((item, i) => {
       if (i === idx) {
-        return { ...item, [field]: val === '' ? null : val };
+        const updated = { ...item, [field]: val === '' ? null : val };
+        
+        // 점검 유형(PM_TYPE)이 변경되면 그에 맞는 대표 표준 주기를 자동으로 세팅해줍니다.
+        if (field === 'checkTypeCode') {
+          if (val === 'INSPECT') {
+            updated.cycleVal = 1;
+            updated.cycleUnit = 'M'; // 예방점검: 기본 1개월
+          } else if (val === 'PATROL') {
+            updated.cycleVal = 1;
+            updated.cycleUnit = 'D'; // 순회점검: 기본 1일
+          } else if (val === 'REPLACE') {
+            updated.cycleVal = 6;
+            updated.cycleUnit = 'M'; // 소모품교체: 기본 6개월
+          } else if (val === 'LEGAL') {
+            updated.cycleVal = 1;
+            updated.cycleUnit = 'Y'; // 법정검사: 기본 1년
+          }
+        }
+
+        return updated;
       }
       return item;
     }));
@@ -352,13 +373,15 @@ export default function Equipment() {
                 <th className="p-3 font-semibold">설치일자</th>
                 <th className="p-3 font-semibold">제조사</th>
                 <th className="p-3 font-semibold">모델</th>
+                <th className="p-3 font-semibold">지난 점검일</th>
+                <th className="p-3 font-semibold">다음 점검일</th>
                 <th className="p-3 font-semibold">작업허가</th>
                 <th className="p-3 font-semibold text-right print:hidden">작업</th>
               </tr>
             </thead>
             <tbody>
               {filteredEquipments.length === 0 ? (
-                <tr><td colSpan={9} className="p-8 text-center text-slate-600 print:text-slate-400">등록된 설비 내역이 없습니다.</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-slate-600 print:text-slate-400">등록된 설비 내역이 없습니다.</td></tr>
               ) : (
                 filteredEquipments.map((eq) => (
                   <tr key={eq.id} className="border-b border-slate-900 hover:bg-slate-900/30 text-slate-300 print:border-slate-200 print:text-slate-800 print:hover:bg-transparent">
@@ -369,6 +392,8 @@ export default function Equipment() {
                     <td className="p-3 text-slate-400 print:text-slate-600">{eq.installDate || '-'}</td>
                     <td className="p-3 text-slate-400 print:text-slate-600">{eq.makerName || '-'}</td>
                     <td className="p-3 text-slate-400 print:text-slate-600">{eq.model || '-'}</td>
+                    <td className="p-3 text-slate-400 print:text-slate-600">{eq.lastCheckDate || '-'}</td>
+                    <td className="p-3 font-semibold text-amber-500">{eq.nextCheckDate || '-'}</td>
                     <td className="p-3">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         eq.workPermitYn === 'Y' 
@@ -419,125 +444,167 @@ export default function Equipment() {
 
             {/* Modal Body */}
             <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Basic Fields Grid */}
+              {/* [기본 정보] 섹션 */}
               <div>
-                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-4 border-l-2 border-blue-500 pl-2">설비 기본 정보</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">플랜트 지정 <span className="text-rose-500">*</span></label>
-                    <select
-                      value={plantId}
-                      onChange={(e) => setPlantId(e.target.value)}
-                      disabled={!!editingId}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
-                    >
-                      {plants.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3 border-l-2 border-blue-500 pl-2">
+                  [기본 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">플랜트 지정 <span className="text-rose-500">*</span></label>
+                      <select
+                        value={plantId}
+                        onChange={(e) => setPlantId(e.target.value)}
+                        disabled={!!editingId}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
+                      >
+                        {plants.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">설비 코드 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        disabled={!!editingId}
+                        value={id}
+                        onChange={(e) => setId(e.target.value)}
+                        placeholder="예: EQ_PMP001"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-slate-400 mb-1.5">설비명 <span className="text-rose-500">*</span></label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="예: 제1송수 펌프 모터"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">설비 구분 타입</label>
+                      <select
+                        value={eqTypeCode}
+                        onChange={(e) => setEqTypeCode(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
+                      >
+                        <option value="PUMP">펌프 (PUMP)</option>
+                        <option value="MOTOR">모터 (MOTOR)</option>
+                        <option value="BOILER">보일러 (BOILER)</option>
+                        <option value="VALVE">밸브 (VALVE)</option>
+                        <option value="COMPRESSOR">압축기 (COMPRESSOR)</option>
+                        <option value="PANEL">전기판넬 (PANEL)</option>
+                        <option value="ETC">기타 설비 (ETC)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">설치 위치</label>
+                      <input
+                        type="text"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="예: 공장 동편 기계실"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">설치 일자</label>
+                      <input
+                        type="date"
+                        value={installDate}
+                        onChange={(e) => setInstallDate(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">작업허가 대상</label>
+                      <select
+                        value={workPermitYn}
+                        onChange={(e) => setWorkPermitYn(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
+                      >
+                        <option value="N">미대상 (일반작업)</option>
+                        <option value="Y">대상 (안전허가 요구)</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">설비 코드 <span className="text-rose-500">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      disabled={!!editingId}
-                      value={id}
-                      onChange={(e) => setId(e.target.value)}
-                      placeholder="예: EQ_PMP001"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors disabled:opacity-50"
-                    />
+                </div>
+              </div>
+
+              {/* [제조사 및 스펙 정보] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3 border-l-2 border-emerald-500 pl-2">
+                  [제조사 및 스펙 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">제조사</label>
+                      <input
+                        type="text"
+                        value={makerName}
+                        onChange={(e) => setMakerName(e.target.value)}
+                        placeholder="제조사명"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">모델명</label>
+                      <input
+                        type="text"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder="모델명"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">일련번호 (S/N)</label>
+                      <input
+                        type="text"
+                        value={serialNumber}
+                        onChange={(e) => setSerialNumber(e.target.value)}
+                        placeholder="Serial Number"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 md:col-span-1">
+                      <label className="block text-slate-400 mb-1.5">제조사 스펙상세</label>
+                      <input
+                        type="text"
+                        value={spec}
+                        onChange={(e) => setSpec(e.target.value)}
+                        placeholder="예: 220V, 60Hz, 15kW"
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
+                      />
+                    </div>
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-400 mb-1.5">설비명 <span className="text-rose-500">*</span></label>
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="예: 제1송수 펌프 모터"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">설치 위치</label>
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="예: 공장 동편 기계실"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">설치 일자</label>
-                    <input
-                      type="date"
-                      value={installDate}
-                      onChange={(e) => setInstallDate(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">작업허가 대상</label>
-                    <select
-                      value={workPermitYn}
-                      onChange={(e) => setWorkPermitYn(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-300 outline-none transition-colors"
-                    >
-                      <option value="N">미대상 (일반작업)</option>
-                      <option value="Y">대상 (안전허가 요구)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">제조사</label>
-                    <input
-                      type="text"
-                      value={makerName}
-                      onChange={(e) => setMakerName(e.target.value)}
-                      placeholder="제조사명"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">모델명</label>
-                    <input
-                      type="text"
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      placeholder="모델명"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1.5">일련번호 (S/N)</label>
-                    <input
-                      type="text"
-                      value={serialNumber}
-                      onChange={(e) => setSerialNumber(e.target.value)}
-                      placeholder="Serial Number"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-slate-400 mb-1.5">제조사 스펙상세</label>
-                    <input
-                      type="text"
-                      value={spec}
-                      onChange={(e) => setSpec(e.target.value)}
-                      placeholder="예: 220V, 60Hz, 15kW"
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors"
-                    />
-                  </div>
-                  <div className="sm:col-span-4">
-                    <label className="block text-slate-400 mb-1.5">비고 및 설명</label>
-                    <textarea
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="설비 관련 설명 또는 특이사항 기록"
-                      rows={2}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors resize-none"
-                    />
+                </div>
+              </div>
+
+              {/* [운영 정보] 섹션 */}
+              <div>
+                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 border-l-2 border-indigo-500 pl-2">
+                  [운영 정보]
+                </h3>
+                <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-5">
+                  <div className="grid grid-cols-1 gap-4 text-xs">
+                    <div>
+                      <label className="block text-slate-400 mb-1.5">비고 및 설명</label>
+                      <textarea
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="설비 관련 설명 또는 특이사항 기록"
+                        rows={2}
+                        className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none transition-colors resize-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -676,22 +743,19 @@ export default function Equipment() {
                   ) : (
                     checkCycles.map((cycle, idx) => (
                       <div key={idx} className="flex gap-3 bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs items-end">
-                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          <div className="sm:col-span-2">
-                            <label className="block text-slate-500 text-[10px] mb-1">점검유형 코드 <span className="text-rose-500">*</span></label>
+                        <div className="flex-1 grid grid-cols-2 lg:grid-cols-5 gap-3">
+                          <div>
+                            <label className="block text-slate-500 text-[10px] mb-1">점검유형 <span className="text-rose-500">*</span></label>
                             <select
                               value={cycle.checkTypeCode}
                               onChange={(e) => handleCheckCycleChange(idx, 'checkTypeCode', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg py-1.5 px-3 text-slate-200 outline-none"
+                              className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg py-1.5 px-2 text-slate-200 outline-none"
                             >
                               <option value="">-- 선택 --</option>
-                              <option value="DAILY">일상점검 (DAILY)</option>
-                              <option value="WEEKLY">주간점검 (WEEKLY)</option>
-                              <option value="MONTHLY">월간점검 (MONTHLY)</option>
-                              <option value="QUARTERLY">분기점검 (QUARTERLY)</option>
-                              <option value="SEMI_ANNUAL">반기점검 (SEMI_ANNUAL)</option>
-                              <option value="ANNUAL">연간점검 (ANNUAL)</option>
-                              <option value="LEGAL">법정검사 (LEGAL)</option>
+                              <option value="INSPECT">예방점검</option>
+                              <option value="PATROL">순회점검</option>
+                              <option value="REPLACE">소모품교체</option>
+                              <option value="LEGAL">정기법정검사</option>
                             </select>
                           </div>
                           <div>
@@ -701,7 +765,7 @@ export default function Equipment() {
                               min="1"
                               value={cycle.cycleVal === null ? '' : cycle.cycleVal}
                               onChange={(e) => handleCheckCycleChange(idx, 'cycleVal', e.target.value)}
-                              placeholder="예: 1, 3, 6"
+                              placeholder="예: 3"
                               className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg py-1.5 px-3 text-slate-200 outline-none"
                             />
                           </div>
@@ -719,11 +783,20 @@ export default function Equipment() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-slate-500 text-[10px] mb-1">기준 시작일 (최초 점검일)</label>
+                            <label className="block text-slate-500 text-[10px] mb-1">지난 점검일</label>
                             <input
                               type="date"
                               value={cycle.lastCheckDate || ''}
                               onChange={(e) => handleCheckCycleChange(idx, 'lastCheckDate', e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg py-1.5 px-3 text-slate-200 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 text-[10px] mb-1">다음 점검일</label>
+                            <input
+                              type="date"
+                              value={cycle.nextCheckDate || ''}
+                              onChange={(e) => handleCheckCycleChange(idx, 'nextCheckDate', e.target.value)}
                               className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-lg py-1.5 px-3 text-slate-200 outline-none"
                             />
                           </div>
