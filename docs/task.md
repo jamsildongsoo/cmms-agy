@@ -1,0 +1,25 @@
+# CMMS 개발 태스크 목록
+
+- [x] 1단계: 개발 환경 세팅 (Infrastructure Setup)
+    - [x] docker-compose.yml 및 docker 디렉토리 구성 (PostgreSQL 16 + Nginx)
+    - [x] backend/ Spring Boot 3.3.x Gradle 프로젝트 생성 및 기본 세팅
+    - [x] frontend/ React + Vite + TS + Tailwind CSS v4 프로젝트 생성 및 세팅
+    - [x] Nginx 리버스 프록시 로컬 연동 및 CORS 해결 테스트
+- [x] 2단계: 데이터베이스 스키마 및 마이그레이션 적용 (Database Setup)
+    - [x] Flyway DDL 마이그레이션 파일 작성 (V1__init.sql 완료)
+    - [x] 공통코드 및 기초 사용자/회사/부서 데이터 시드 스크립트 작성 (V2__seed_data.sql 완료)
+- [x] 3단계: 인증 & 기준정보 모듈 개발 (Auth & MDM)
+    - [x] Spring Security + JWT 로그인/인증 및 토큰 갱신 백엔드 개발
+    - [x] React Zustand 글로벌 스토어 세팅 및 로그인 화면 구현
+    - [x] 회사, 플랜트, 부서(계층형), 사용자, 권한(C/R/U/D/A), 공통코드, 창고 등록/수정/조회 API 및 UI 구현
+- [/] 4단계: 마스터 정보 & 트랜잭션 개발 (Master & Transaction)
+    - [x] 설비마스터, 재고마스터 CRUD 및 가로 리스트 출력, CSV 다운로드
+    - [x] 예방점검 기록/점검항목/점검주기(스케줄) 관리 및 결재 연동 로직
+    - [ ] 작업지시 계획/실적 등록 및 결재 연동
+    - [ ] 작업허가 체크시트 JSON 데이터 처리 및 개별/종합 출력 양식
+    - [ ] 재고처리(입출고/이동) 평균단가 비관적 락(정렬잠금+3초 타임아웃) 및 재고마감 로직
+- [ ] 5단계: 결재 & 게시판 모듈 개발 (Approval & Board)
+    - [ ] 4x2 결재박스 화면 렌더링 및 출력(Print)용 레이아웃, 상신/결재/참조함 구현
+    - [ ] 게시판 공지글 고정 및 단층 댓글 시스템 구현
+- [ ] 6단계: 검증 및 배포 준비 (Verification & Tuning)
+    - [ ] 전체 연동 통합 테스트 및 예외 처리

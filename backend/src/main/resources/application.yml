@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cmms-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/cmms
+    username: cmms_user
+    password: cmms_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none # Flyway 버전 관리를 위해 DDL 자동 업데이트 비활성화
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true # 기존 DB가 존재할 경우 V1부터 마이그레이션 적용을 위한 설정
+    locations: classpath:db/migration
+
+# JWT 보안 설정 상용/개발 플레이스홀더
+jwt:
+  secret: c3VwZXItc2VjcmV0LWtleS1mb3ItY21tcy1zeXN0ZW0tMzAtdXNlcnMtb3ItbW9yZS1kZXZlbG9wbWVudA== # HS256 알고리즘용 256비트 이상의 base64 인코딩 키
+  expiration: 1800000 # 30분 (밀리초)
