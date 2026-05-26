@@ -316,6 +316,10 @@ public class InventoryTransactionService {
 
     @Transactional
     public void closeMonth(String companyId, String closingYm, String operator) {
+        if (closingYm == null || !closingYm.matches("\\d{6}")) {
+            throw new IllegalArgumentException("마감 년월은 YYYYMM 형식이어야 합니다.");
+        }
+
         // 기존 마감 내역 삭제
         List<InventoryMonthlyClosing> existings = inventoryMonthlyClosingRepository
                 .findByCompanyIdAndClosingYmAndDeleteYn(companyId, closingYm, "N");

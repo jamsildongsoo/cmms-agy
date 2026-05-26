@@ -91,6 +91,7 @@ export default function PreventiveMaintenance() {
       setDepts(deptRes.data);
     } catch (err) {
       console.error(err);
+      setMessage({ type: 'error', text: '목록을 불러오지 못했습니다.' });
     }
   };
 

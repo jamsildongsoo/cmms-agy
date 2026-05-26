@@ -56,6 +56,7 @@ export default function Board() {
       setPosts(res.data);
     } catch (err) {
       console.error(err);
+      alert('목록을 불러오지 못했습니다.');
     }
   };
 

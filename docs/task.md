@@ -40,6 +40,17 @@
     - [x] `PermissionChecker`(`@perm`) + `@PreAuthorize`로 전 엔드포인트 인가: SYSTEM 전체통과 / Company=SYSTEM role 전용 / 그 외 모듈별 C·R·U·D 매트릭스 검사
     - [x] `A`(자체확정 S) = PM/WO/WP를 결재 우회 확정 시 요구(`checkSave`). 결재 승인은 결재선(결재자 본인) 기반으로 매트릭스 미관리
 
+- [x] **[추가] 프론트 세션 영속화 (새로고침 시 강제 로그아웃 결함 수정)**
+    - [x] `useAuthStore`에 zustand `persist`(sessionStorage) 적용, `{token, user, expiresAt}`만 저장
+    - [x] `init()`(main.tsx에서 1회 호출)로 새로고침 시 axios 헤더·세션 타이머 재설정, 절대 만료시각(`expiresAt`) 기준 카운트다운
+    - [x] 서버 401 응답 시 자동 로그아웃하는 axios 인터셉터 추가
+    - 비고: 저장소는 sessionStorage(탭/브라우저 종료 시 재로그인). 토큰은 여전히 Bearer 헤더 인증
+
+- [x] **[추가] 프론트 리스트 로드 실패 무피드백 보완**
+    - [x] 목록 로드 catch(기존 `console.error`만)에 사용자 피드백 추가 — 빈 화면을 "데이터 없음"으로 오인하는 문제 방지
+    - [x] 페이지 컨벤션대로: Equipment·Inventory·WorkOrder·PM·WorkPermit는 `setMessage`, Approval·Board는 `alert` ("목록을 불러오지 못했습니다.")
+    - 비고: null 가드는 추가 수정 불필요로 검토 종결(리스트 state `[]` 초기화, 상세 블록 조건부 렌더로 이미 안전)
+
 
 - [ ] **8단계: 출력(인쇄) 양식 전체 점검 및 통일화 (Print Layout Review)**
     > 기준: 설비마스터 출력 양식 (가로 출력, 브라우저 헤더 제거, 커스텀 타이틀/메타 헤더)
@@ -68,3 +79,9 @@
     - [ ] **프론트엔드**
         - [ ] 드래그&드롭 파일 업로드용 공통 첨부 컴포넌트 개발
         - [ ] 결재(Approval.tsx) 및 게시글(Board.tsx)에 파일 첨부 UI 연동
+
+- [ ] **[보류/보안] CORS 설정 강화** (검토 완료, 현재 변경 보류)
+    > `SecurityConfig`: `setAllowedOriginPatterns("*")` + `setAllowCredentials(true)` — 임의 오리진의 자격증명 동반 요청을 허용하는 오설정(Spring이 Origin을 반사 + credentials 허용).
+    > **실효 위험 낮음**: 인증이 `Authorization: Bearer` 헤더 기반(백엔드 쿠키 미사용, 프론트 `withCredentials` 미설정=false)이라 교차 오리진으로 자격증명이 오가지 않고, 운영은 nginx 동일 출처. → 토큰 탈취/요청 위조 성립 안 함.
+    > **조치안(미적용)**: ① `allowCredentials(false)`(현 Bearer 모델에 부합, Bearer 동작 영향 없음) 또는 ② 오리진 env 허용목록화(`CORS_ALLOWED_ORIGINS`).
+    > ⚠️ **재검토 트리거**: 쿠키 기반 인증(예: httpOnly refresh 토큰)으로 전환 시 즉시 CSRF/응답 탈취 구멍이 되므로, 그 전에 **반드시 명시 오리진 + `allowCredentials` 재검토**.
