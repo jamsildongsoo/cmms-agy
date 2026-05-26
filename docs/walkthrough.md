@@ -110,3 +110,8 @@
 ### 검증
 - 컴파일 통과, Auth(permitAll)·결재 action(인증 전용) 제외 전 엔드포인트 `@PreAuthorize` 커버리지 100% 확인.
 - `-parameters` 컴파일 적용(Spring Boot 3.2+ Gradle 플러그인) 확인 → SpEL `#request`/`#permit` 파라미터명 해석 가능.
+
+### 예외 응답 일원화
+사용자에게 일관된 JSON(`{status, message}`)을 주도록 처리(이전 리뷰 M5):
+- `GlobalExceptionHandler`(`@RestControllerAdvice`): 비즈니스 검증 실패 400, `@PreAuthorize` 거부 403, 무결성 위반(동시 입고 PK 충돌 등) 409 "재시도", 그 외 500.
+- `SecurityConfig`의 필터 단계 핸들러: 미인증/토큰만료 `AuthenticationEntryPoint` 401, 필터 단계 권한거부 `AccessDeniedHandler` 403.
