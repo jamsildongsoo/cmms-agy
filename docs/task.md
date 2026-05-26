@@ -31,6 +31,15 @@
     - [x] `Login.tsx` 화면에 "아이디/회사명 저장" 체크박스 추가
     - [x] `localStorage`를 활용하여 회사코드 및 사용자 ID를 브라우저에 저장하고 재진입 시 자동 복원
 
+- [x] **[추가] 환경변수 외부화 (설정 strict 정리)** — 상세: [walkthrough.md](./walkthrough.md)
+    - [x] `application.yml` 자리표시자화: DB/JWT 자격증명 기본값 제거(fail-fast), 프로파일 단일화(개발·운영 Supabase 통일)
+    - [x] `.env`/`.env.template`를 `DB_*` / `JWT_SECRET` / `STORAGE_*` 키 체계로 재정비 (변수명 `SUPABASE_*` → 일반화)
+
+- [x] **[추가] 서버측 인가(RBAC) 적용** — 상세: [walkthrough.md](./walkthrough.md)
+    - [x] `AppModule` enum으로 권한 모듈 단일화(MDM/EQUIPMENT/INVENTORY/STOCK/PM/WO/WP/APPROVAL/BOARD), 재고처리 전용 `STOCK` 신설 + `V3` 백필
+    - [x] `PermissionChecker`(`@perm`) + `@PreAuthorize`로 전 엔드포인트 인가: SYSTEM 전체통과 / Company=SYSTEM role 전용 / 그 외 모듈별 C·R·U·D 매트릭스 검사
+    - [x] `A`(자체확정 S) = PM/WO/WP를 결재 우회 확정 시 요구(`checkSave`). 결재 승인은 결재선(결재자 본인) 기반으로 매트릭스 미관리
+
 
 - [ ] **8단계: 출력(인쇄) 양식 전체 점검 및 통일화 (Print Layout Review)**
     > 기준: 설비마스터 출력 양식 (가로 출력, 브라우저 헤더 제거, 커스텀 타이틀/메타 헤더)

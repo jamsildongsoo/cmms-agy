@@ -191,13 +191,12 @@ public class MdmService {
         // 부모 레코드(Role)를 먼저 즉시 물리적으로 저장하여 외래키 제약조건 충돌 방지
         Role savedRole = roleRepository.saveAndFlush(role);
 
-        // 기본 권한 상세 매트릭스 목록 자동 셋업
-        String[] modules = {"MDM", "EQUIPMENT", "INVENTORY", "PM", "WO", "WP", "APPROVAL", "BOARD"};
-        for (String module : modules) {
+        // 기본 권한 상세 매트릭스 목록 자동 셋업 (모듈 정의는 AppModule 단일 소스)
+        for (com.cmms.security.AppModule m : com.cmms.security.AppModule.values()) {
             RoleDetail detail = new RoleDetail();
             detail.setCompanyId(companyId);
             detail.setRoleId(savedRole.getId());
-            detail.setModuleDetail(module);
+            detail.setModuleDetail(m.name());
             roleDetailRepository.save(detail);
         }
         roleDetailRepository.flush();

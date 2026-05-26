@@ -9,6 +9,7 @@ import com.cmms.repository.InventoryStatusRepository;
 import com.cmms.repository.InventoryHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,16 +29,19 @@ public class InventoryTransactionController {
     private InventoryHistoryRepository inventoryHistoryRepository;
 
     @GetMapping("/status")
+    @PreAuthorize("@perm.check('STOCK','R')")
     public ResponseEntity<List<InventoryStatus>> getInventoryStatus(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(inventoryStatusRepository.findByCompanyIdAndDeleteYn(principal.getCompanyId(), "N"));
     }
 
     @GetMapping("/history")
+    @PreAuthorize("@perm.check('STOCK','R')")
     public ResponseEntity<List<InventoryHistory>> getInventoryHistory(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(inventoryHistoryRepository.findByCompanyIdAndDeleteYn(principal.getCompanyId(), "N"));
     }
 
     @PostMapping
+    @PreAuthorize("@perm.check('STOCK','C')")
     public ResponseEntity<Void> processTransactions(
             @RequestBody InventoryTxRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         inventoryTransactionService.processTransactions(principal.getCompanyId(), request, principal.getUsername());
@@ -45,6 +49,7 @@ public class InventoryTransactionController {
     }
 
     @PostMapping("/close")
+    @PreAuthorize("@perm.check('STOCK','C')")
     public ResponseEntity<Void> closeMonth(
             @RequestParam String closingYm, @AuthenticationPrincipal UserPrincipal principal) {
         inventoryTransactionService.closeMonth(principal.getCompanyId(), closingYm, principal.getUsername());

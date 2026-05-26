@@ -53,3 +53,60 @@
 ### 2. 프론트엔드 타입스크립트 빌드 성공
 - 타입 검사 및 CSS 최적화 검증 통과 후 `npm run build`에 대성공했습니다.
 - Vite 개발 서버 `npm run dev`를 통해 포트 `5173`에서 정상 동작 중이며 Nginx `8082` 포트로의 프록시가 CORS 없이 유연하게 맞닿아 있습니다.
+
+---
+
+## 환경변수 외부화 및 설정 관리
+
+자격증명·환경별 설정을 코드/형상관리에서 분리하기 위해 `application.yml`을 정리했습니다.
+
+### 설정 원칙
+- **단일 설정 (프로파일 분리 없음)**: 개발·운영 모두 Supabase DB를 사용하므로, 기존 `default`(로컬 docker) / `supabase` 프로파일 이원화를 단일 설정으로 통합했습니다. 환경 간 차이는 **주입되는 환경변수 값**뿐입니다.
+- **자리표시자만 유지 + fail-fast**: `application.yml`에는 `${DB_URL}` 같은 자리표시자만 두고 실제 값은 두지 않습니다. 민감/필수 항목은 **기본값을 두지 않아** 미주입 시 애플리케이션이 기동되지 않습니다.
+
+### 환경변수 목록
+| 변수 | 필수 | 비고 |
+|------|:---:|------|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | ✅ | 미설정 시 기동 실패 |
+| `JWT_SECRET` | ✅ | HS256용 base64 256bit+ 키. 미설정 시 기동 실패 (`openssl rand -base64 32`) |
+| `DB_POOL_MAX`(5) / `DB_POOL_MIN`(2) | ⬜ | Hikari 풀, 기본값 존재 |
+| `JPA_SHOW_SQL`(true) / `JWT_EXPIRATION`(1800000) | ⬜ | 기본값 존재 |
+| `STORAGE_*` | ⬜ | **미구현** Object Storage용. [task.md 9단계](./task.md) 구현 시 사용 |
+
+### 주입 방법
+- **로컬**: 프로젝트 루트의 `.env`(gitignore됨)를 셸에 로드 — `set -a; source .env; set +a` 후 `./gradlew bootRun`. (또는 IDE Run Config의 EnvFile.)
+- **운영**: systemd `EnvironmentFile=` / docker `--env-file` / Kubernetes Secret으로 주입. jar는 고정 산출물, 환경별 차이는 env 파일/Secret만 교체.
+- 키 목록·가이드는 `.env.template`(커밋됨)에 유지.
+
+### 검증
+- 환경변수 미주입 상태로 기동 시 `Could not resolve placeholder 'JWT_SECRET'`로 즉시 실패함을 확인 (fail-fast 정상 동작, DB 접속/​Flyway 실행 이전 단계).
+
+---
+
+## 서버측 인가(RBAC)
+
+기존엔 회사(Company) API 외 모든 변경 엔드포인트에 서버 인가가 없어, 인증만 되면 누구나 호출 가능하고 `role_detail` C/R/U/D/A 매트릭스는 프론트 장식에 불과했다. 이를 서버에서 실제 강제하도록 적용했다.
+
+### 모듈 정의
+권한 모듈은 `AppModule` enum 단일 소스로 관리한다(시드와 `@PreAuthorize`가 이 이름을 공유):
+`MDM, EQUIPMENT, INVENTORY, STOCK, PM, WO, WP, APPROVAL, BOARD`.
+- 재고 **마스터**(`INVENTORY`)와 재고 **처리**(입출고·이동·월마감, `STOCK`)는 별도 모듈로 분리. 기존 롤은 `V3__add_stock_permission.sql`로 INVENTORY 권한을 복사해 STOCK 행을 백필.
+- 회사(Company)는 매트릭스에 넣지 않는다(아래 참조).
+
+### 인가 규칙 (`PermissionChecker`, 빈 이름 `perm`)
+1. **SYSTEM role → 전부 통과**.
+2. **Company API(`/api/mdm/companies*`) → `hasRole('SYSTEM')`** (매트릭스가 아닌 role 기반 전용 통제).
+3. **그 외 → `@PreAuthorize("@perm.check('<MODULE>','<ACTION>')")`** 로 `role_detail[company, role, module]`의 해당 액션 플래그(C/R/U/D) 검사. 행 없으면 거부.
+4. 액션 매핑: 조회=R, 생성/저장=C, 수정=U, 삭제=D. (월마감은 마감 레코드 생성이므로 `STOCK,C`.)
+
+### 권한 `A`(자체 확정)의 의미
+`A`는 결재 모듈의 승인 권한이 **아니다**. 결재 연계 모듈(PM/WO/WP)에서 결재를 거치지 않고 `status="S"`로 **자체 확정**할 수 있는 권한이다.
+- 저장 엔드포인트는 `@perm.checkSave('<MODULE>', status)` 사용: 저장은 C, 단 `status="S"`면 A를 추가로 요구. A가 없으면 자체 확정 불가 → 결재 상신 필요.
+- 기본 시드상 USER는 A 없음(상신 필요), MANAGER/ADMIN은 A 보유(자체 확정 가능).
+
+### 결재 승인 권한
+결재 처리(`POST /api/approval/{id}/action`)는 **권한 매트릭스로 관리하지 않는다.** 인증된 사용자 중 "해당 문서의 대기 단계 결재자 본인"인지를 `ApprovalService`가 행단위로 검증한다(결재선 기반).
+
+### 검증
+- 컴파일 통과, Auth(permitAll)·결재 action(인증 전용) 제외 전 엔드포인트 `@PreAuthorize` 커버리지 100% 확인.
+- `-parameters` 컴파일 적용(Spring Boot 3.2+ Gradle 플러그인) 확인 → SpEL `#request`/`#permit` 파라미터명 해석 가능.

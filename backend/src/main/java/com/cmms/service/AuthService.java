@@ -226,10 +226,10 @@ public class AuthService {
     }
 
     private void createDefaultRoleDetails(String companyId, String roleId) {
-        String[] modules = {"MDM", "EQUIPMENT", "INVENTORY", "PM", "WO", "WP", "APPROVAL", "BOARD"};
         List<RoleDetail> details = new ArrayList<>();
 
-        for (String module : modules) {
+        for (com.cmms.security.AppModule m : com.cmms.security.AppModule.values()) {
+            String module = m.name();
             RoleDetail detail = new RoleDetail();
             detail.setCompanyId(companyId);
             detail.setRoleId(roleId);

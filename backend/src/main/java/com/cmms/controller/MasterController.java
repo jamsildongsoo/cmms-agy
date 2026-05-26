@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,29 +26,34 @@ public class MasterController {
     // 1. 설비 마스터 (Equipment)
     // ==========================================
     @GetMapping("/equipments")
+    @PreAuthorize("@perm.check('EQUIPMENT','R')")
     public ResponseEntity<List<Equipment>> getEquipments(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.getEquipmentsByCompany(principal.getCompanyId()));
     }
 
     @GetMapping("/equipments/plant/{plantId}")
+    @PreAuthorize("@perm.check('EQUIPMENT','R')")
     public ResponseEntity<List<Equipment>> getEquipmentsByPlant(
             @PathVariable String plantId, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.getEquipmentsByPlant(principal.getCompanyId(), plantId));
     }
 
     @GetMapping("/equipments/details")
+    @PreAuthorize("@perm.check('EQUIPMENT','R')")
     public ResponseEntity<EquipmentSaveRequest> getEquipmentDetails(
             @RequestParam String plantId, @RequestParam String id, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.getEquipmentWithDetails(principal.getCompanyId(), plantId, id));
     }
 
     @PostMapping("/equipments")
+    @PreAuthorize("@perm.check('EQUIPMENT','C')")
     public ResponseEntity<Equipment> saveEquipment(
             @RequestBody EquipmentSaveRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.saveEquipment(principal.getCompanyId(), request, principal.getUsername()));
     }
 
     @DeleteMapping("/equipments")
+    @PreAuthorize("@perm.check('EQUIPMENT','D')")
     public ResponseEntity<Void> deleteEquipment(
             @RequestParam String plantId, @RequestParam String id, @AuthenticationPrincipal UserPrincipal principal) {
         masterService.deleteEquipment(principal.getCompanyId(), plantId, id, principal.getUsername());
@@ -55,6 +61,7 @@ public class MasterController {
     }
 
     @GetMapping("/equipments/csv")
+    @PreAuthorize("@perm.check('EQUIPMENT','R')")
     public ResponseEntity<String> downloadEquipmentsCsv(@AuthenticationPrincipal UserPrincipal principal) {
         String csv = masterService.exportEquipmentsToCsv(principal.getCompanyId());
         
@@ -71,23 +78,27 @@ public class MasterController {
     // 2. 재고 마스터 (Inventory)
     // ==========================================
     @GetMapping("/inventories")
+    @PreAuthorize("@perm.check('INVENTORY','R')")
     public ResponseEntity<List<Inventory>> getInventories(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.getInventoriesByCompany(principal.getCompanyId()));
     }
 
     @GetMapping("/inventories/{id}")
+    @PreAuthorize("@perm.check('INVENTORY','R')")
     public ResponseEntity<Inventory> getInventory(
             @PathVariable String id, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.getInventoryById(principal.getCompanyId(), id));
     }
 
     @PostMapping("/inventories")
+    @PreAuthorize("@perm.check('INVENTORY','C')")
     public ResponseEntity<Inventory> saveInventory(
             @RequestBody Inventory inventory, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(masterService.saveInventory(principal.getCompanyId(), inventory, principal.getUsername()));
     }
 
     @DeleteMapping("/inventories/{id}")
+    @PreAuthorize("@perm.check('INVENTORY','D')")
     public ResponseEntity<Void> deleteInventory(
             @PathVariable String id, @AuthenticationPrincipal UserPrincipal principal) {
         masterService.deleteInventory(principal.getCompanyId(), id, principal.getUsername());
@@ -95,6 +106,7 @@ public class MasterController {
     }
 
     @GetMapping("/inventories/csv")
+    @PreAuthorize("@perm.check('INVENTORY','R')")
     public ResponseEntity<String> downloadInventoriesCsv(@AuthenticationPrincipal UserPrincipal principal) {
         String csv = masterService.exportInventoriesToCsv(principal.getCompanyId());
         
