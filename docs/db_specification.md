@@ -286,8 +286,8 @@ CREATE TABLE approval_step (
     approval_id VARCHAR(50),
     step_no INT, -- 0: 상신자, 1부터 결재순번
     approver_id VARCHAR(50) NOT NULL,
-    approval_type CHAR(1) NOT NULL, -- D(기안), A(결재), G(합의), R(참조)
-    approval_result CHAR(1) NOT NULL, -- D(기안), A(승인), R(반려), W(대기)
+    approval_type CHAR(1) NOT NULL, -- 정본 §5.2: D(기안)/A(결재)/G(합의)/R(참조)
+    approval_result CHAR(1), -- 정본 §5.3: 빈칸(대기)/Y(승인)/N(반려). ※목표값; 현재 코드는 T/P/A/R, V4 전환 예정
     action_at TIMESTAMP,
     comments TEXT,
     PRIMARY KEY (company_id, approval_id, step_no),
@@ -695,6 +695,65 @@ CREATE TABLE kpx_interface (
 *   `OUT`: 출고 (정비용 자재 출고 등)
 *   `MOVE`: 이동 (저장소 간 이동)
 *   `ADJ`: 실사조정 (재고조사 후 수량 조정)
+
+---
+
+## 5. 상태·유형 코드 정본 (Status & Type Codes) — 단일 소스
+
+> 본 섹션이 상태/유형 코드의 **정본**이다. 위 DDL 인라인 주석과 어긋나면 이 표를 우선한다.
+> 원칙: **상호배타 다중상태 = 단일 코드(enum)**, **이분(예/아니오) = `Y`/`N` 플래그**. 백엔드 enum은 `com.cmms.constant`에 정의.
+
+### 5.1. 문서 상태 — `DocStatus` (`status` 컬럼; PM/WO/WP/Approval)
+| 코드 | enum | 의미 |
+|---|---|---|
+| `T` | TEMP | 임시저장 |
+| `P` | IN_PROGRESS | 결재중(상신됨) |
+| `C` | CONFIRMED | 완결확정 |
+| `S` | SELF_CONFIRMED | 직접확정(권한자, 결재 우회) |
+| `R` | REJECTED | 반려 |
+| `X` | CANCELED | 취소 |
+> Approval 문서는 `S` 미사용(부분집합).
+
+### 5.2. 결재 단계 유형 — `ApprovalStepType` (`approval_type` 컬럼)
+| 코드 | enum | 의미 |
+|---|---|---|
+| `D` | DRAFT | 기안 |
+| `A` | APPROVAL | 결재(대상) |
+| `G` | AGREEMENT | 합의 |
+| `R` | REFERENCE | 참조 |
+
+### 5.3. 결재 단계 결과 — `approval_result` 컬럼 (enum 없이 Y/N 플래그)
+| 저장값 | 의미 |
+|---|---|
+| `(빈칸/NULL)` | 대기 |
+| `Y` | 승인 |
+| `N` | 반려 |
+> "현재 차례"는 저장하지 않고 **단계 순서 + 직전 단계 승인 여부로 계산**. 기안(`D`) 단계는 상신 시 `Y`로 기록.
+> ⚠️ **전환 예정(미적용)**: 현재 코드/DB는 과거 값(`T`/`P`/`A`/`R`)을 사용 중이며, 위 `빈칸/Y/N`은 합의된 목표다(워크플로 로직 재작성 + `V4` 마이그레이션 필요). 적용 전까지 이 줄을 기준으로 혼동 주의.
+
+### 5.4. 채번 모듈 — `SeqModule` (문서번호 접두사 = `sequence_generator.ref_module`)
+| 코드 | 의미 |
+|---|---|
+| `WO` | 작업지시 |
+| `WP` | 작업허가 |
+| `PM` | 예방점검 |
+| `APR` | 결재 |
+> ⚠️ 권한 모듈(`AppModule`)과 **별개 네임스페이스** — 결재는 채번 `APR` / 권한 `APPROVAL`로 다름.
+
+### 5.5. 역할 — `RoleType` (`role.id`)
+| 코드 | 의미 |
+|---|---|
+| `SYSTEM` | 플랫폼 전역 슈퍼관리자 — **시드 SYSTEM 테넌트 전용**(일반 회사 생성 금지) |
+| `ADMIN` | 회사관리자 |
+| `MANAGER` | 중간관리자 |
+| `USER` | 일반사용자 |
+
+### 5.6. 권한 모듈 — `AppModule` (`role_detail.module_detail`)
+`MDM`, `EQUIPMENT`, `INVENTORY`, `STOCK`, `PM`, `WO`, `WP`, `APPROVAL`, `BOARD`
+> 권한 액션(C/R/U/D)은 모듈별 `role_detail`의 `perm_*` 플래그(`Y`/`N`)로 관리. `A`(자체확정) 권한은 PM/WO/WP를 결재 우회 확정(`status=S`)할 때만 사용.
+
+### 5.7. 불리언 플래그 (`Y`/`N`)
+`delete_yn`, `use_yn`, `multi_plant`, `legal_inspect_yn`, `role_detail.perm_c/r/u/d/a` — 이분값이므로 코드가 아닌 `Y`/`N`.
 
 
 

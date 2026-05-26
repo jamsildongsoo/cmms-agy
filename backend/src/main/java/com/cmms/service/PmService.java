@@ -1,5 +1,7 @@
 package com.cmms.service;
 
+import com.cmms.constant.DocStatus;
+import com.cmms.constant.SeqModule;
 import com.cmms.dto.PmDto.*;
 import com.cmms.model.*;
 import com.cmms.repository.*;
@@ -107,7 +109,7 @@ public class PmService {
 
         boolean isNew = pm.getId() == null || pm.getId().trim().isEmpty();
         if (isNew) {
-            String pmNo = sequenceService.generateNextNo(companyId, "PM", pm.getDepartmentId());
+            String pmNo = sequenceService.generateNextNo(companyId, SeqModule.PM.code(), pm.getDepartmentId());
             pm.setId(pmNo);
             pm.setCreatedBy(operator);
         }
@@ -128,7 +130,7 @@ public class PmService {
             }
         }
 
-        if ("S".equals(pm.getStatus()) || "C".equals(pm.getStatus())) {
+        if (DocStatus.SELF_CONFIRMED.code().equals(pm.getStatus()) || DocStatus.CONFIRMED.code().equals(pm.getStatus())) {
             updateCheckCycleSchedule(companyId, pm, operator);
         }
 

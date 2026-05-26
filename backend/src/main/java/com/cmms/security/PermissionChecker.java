@@ -1,5 +1,6 @@
 package com.cmms.security;
 
+import com.cmms.constant.RoleType;
 import com.cmms.model.RoleDetailId;
 import com.cmms.repository.RoleDetailRepository;
 import org.springframework.security.core.Authentication;
@@ -45,7 +46,7 @@ public class PermissionChecker {
         }
 
         // 1) SYSTEM은 전 모듈 통과
-        if ("SYSTEM".equalsIgnoreCase(principal.getRoleId())) {
+        if (RoleType.SYSTEM.code().equalsIgnoreCase(principal.getRoleId())) {
             return true;
         }
 

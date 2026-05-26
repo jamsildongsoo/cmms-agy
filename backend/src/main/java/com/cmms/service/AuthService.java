@@ -207,15 +207,17 @@ public class AuthService {
         departmentRepository.save(dept);
 
         // 3. 표준 권한 그룹 생성
-        String[] standardRoles = {"SYSTEM", "ADMIN", "MANAGER", "USER"};
-        String[] standardRoleNames = {"시스템관리자", "회사관리자", "중간관리자", "일반사용자"};
-        
+        // SYSTEM 역할은 플랫폼 전역 슈퍼관리자(시드 SYSTEM 테넌트의 sysadmin) 전용이므로 회사별로 만들지 않는다.
+        // (회사별 SYSTEM 역할은 권한 매트릭스 우회 + 교차 테넌트 Company API 접근을 허용하는 격리 위반 경로)
+        String[] standardRoles = {"ADMIN", "MANAGER", "USER"};
+        String[] standardRoleNames = {"회사관리자", "중간관리자", "일반사용자"};
+
         for (int i = 0; i < standardRoles.length; i++) {
             Role role = new Role();
             role.setCompanyId(companyId);
             role.setId(standardRoles[i]);
             role.setRoleName(standardRoleNames[i]);
-            role.setMultiPlant(standardRoles[i].equals("SYSTEM") ? "Y" : "N");
+            role.setMultiPlant("N");
             role.setCreatedBy("SYSTEM");
             role.setUpdatedBy("SYSTEM");
             roleRepository.save(role);

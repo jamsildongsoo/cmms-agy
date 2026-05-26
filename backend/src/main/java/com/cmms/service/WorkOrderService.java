@@ -1,5 +1,6 @@
 package com.cmms.service;
 
+import com.cmms.constant.SeqModule;
 import com.cmms.dto.WorkOrderDto.WorkOrderSaveRequest;
 import com.cmms.model.WorkOrder;
 import com.cmms.model.WorkOrderId;
@@ -50,7 +51,7 @@ public class WorkOrderService {
 
         boolean isNew = wo.getId() == null || wo.getId().trim().isEmpty();
         if (isNew) {
-            String woNo = sequenceService.generateNextNo(companyId, "WO", wo.getDepartmentId());
+            String woNo = sequenceService.generateNextNo(companyId, SeqModule.WO.code(), wo.getDepartmentId());
             wo.setId(woNo);
             wo.setCreatedBy(operator);
         }
