@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axiosInstance from '../api/axios';
-import { ShieldCheck, Users, History } from 'lucide-react';
+import { ShieldCheck, Users, History, Building2, Plus } from 'lucide-react';
 
 interface SysUser {
   companyId: string;
@@ -16,7 +16,7 @@ interface SysUser {
   lastLoginAt: string | null;
   lastLoginIp: string | null;
 }
-interface Company { id: string; name: string; }
+interface Company { id: string; name: string; businessNumber?: string | null; email?: string | null; }
 interface LoginHist {
   companyId: string;
   userId: string;
@@ -26,9 +26,16 @@ interface LoginHist {
 }
 
 export default function SystemAdmin() {
-  const [tab, setTab] = useState<'users' | 'history'>('users');
+  const [tab, setTab] = useState<'companies' | 'users' | 'history'>('companies');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 회사 생성 폼
+  const [coId, setCoId] = useState('');
+  const [coName, setCoName] = useState('');
+  const [coBizNo, setCoBizNo] = useState('');
+  const [coEmail, setCoEmail] = useState('');
+  const [coSaving, setCoSaving] = useState(false);
 
   // 사용자 관리
   const [userCompanyId, setUserCompanyId] = useState('');
@@ -39,11 +46,39 @@ export default function SystemAdmin() {
   const [histUserId, setHistUserId] = useState('');
   const [history, setHistory] = useState<LoginHist[]>([]);
 
-  useEffect(() => {
-    axiosInstance.get('/mdm/companies')
-      .then(res => setCompanies(res.data))
-      .catch(() => setMessage({ type: 'error', text: '회사 목록을 불러오지 못했습니다.' }));
-  }, []);
+  const fetchCompanies = async () => {
+    try {
+      const res = await axiosInstance.get('/mdm/companies');
+      setCompanies(res.data);
+    } catch {
+      setMessage({ type: 'error', text: '회사 목록을 불러오지 못했습니다.' });
+    }
+  };
+
+  useEffect(() => { fetchCompanies(); }, []);
+
+  const createCompany = async () => {
+    if (!coId.trim() || !coName.trim()) {
+      setMessage({ type: 'error', text: '회사 코드와 회사명은 필수입니다.' });
+      return;
+    }
+    setCoSaving(true);
+    try {
+      await axiosInstance.post('/mdm/companies', {
+        id: coId.trim(),
+        name: coName.trim(),
+        businessNumber: coBizNo.trim() || null,
+        email: coEmail.trim() || null,
+      });
+      setMessage({ type: 'success', text: `회사 '${coId.trim().toUpperCase()}' 생성 완료 (기본 롤·권한·공통코드 시드됨).` });
+      setCoId(''); setCoName(''); setCoBizNo(''); setCoEmail('');
+      fetchCompanies();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.response?.data?.message || '회사 생성 실패' });
+    } finally {
+      setCoSaving(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -99,6 +134,9 @@ export default function SystemAdmin() {
       )}
 
       <div className="flex gap-2">
+        <button onClick={() => setTab('companies')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${tab === 'companies' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+          <Building2 size={14} /> 회사 관리
+        </button>
         <button onClick={() => setTab('users')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${tab === 'users' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
           <Users size={14} /> 사용자 관리
         </button>
@@ -106,6 +144,47 @@ export default function SystemAdmin() {
           <History size={14} /> 로그인 이력
         </button>
       </div>
+
+      {tab === 'companies' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-sm font-bold text-slate-200">신규 회사 생성</h3>
+            <p className="text-[11px] text-slate-500">생성 시 기본 롤(ADMIN/MANAGER/USER)·권한 매트릭스·공통코드가 자동 시딩됩니다. 회사 코드는 대문자로 정규화됩니다.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input value={coId} onChange={e => setCoId(e.target.value)} placeholder="회사 코드 * (영문 대문자/숫자)"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+              <input value={coName} onChange={e => setCoName(e.target.value)} placeholder="회사명 *"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+              <input value={coBizNo} onChange={e => setCoBizNo(e.target.value)} placeholder="사업자번호 (선택)"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+              <input value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="대표 이메일 (선택)"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+            </div>
+            <button onClick={createCompany} disabled={coSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white disabled:opacity-50">
+              <Plus size={14} /> {coSaving ? '생성 중…' : '회사 생성'}
+            </button>
+          </div>
+          <div className="overflow-x-auto border-t border-slate-800 pt-3">
+            <table className="w-full text-xs text-slate-300">
+              <thead className="text-slate-500 border-b border-slate-800">
+                <tr>{['코드', '회사명', '사업자번호', '이메일'].map(h => <th key={h} className="text-left px-2 py-2 font-semibold">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {companies.map(c => (
+                  <tr key={c.id} className="border-b border-slate-800/60">
+                    <td className="px-2 py-2 font-mono">{c.id}</td>
+                    <td className="px-2 py-2">{c.name}</td>
+                    <td className="px-2 py-2 text-slate-400">{c.businessNumber || '-'}</td>
+                    <td className="px-2 py-2 text-slate-400">{c.email || '-'}</td>
+                  </tr>
+                ))}
+                {companies.length === 0 && <tr><td colSpan={4} className="px-2 py-6 text-center text-slate-600">데이터 없음</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {tab === 'users' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">

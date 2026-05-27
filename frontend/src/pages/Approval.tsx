@@ -29,7 +29,7 @@ interface ApprovalStepModel {
 
 export default function Approval() {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'pending' | 'sent' | 'referenced'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'sent' | 'referenced' | 'processed'>('pending');
 
   const [approvals, setApprovals] = useState<ApprovalModel[]>([]);
   const [usersList, setUsersList] = useState<{ id: string; name: string; title: string | null; position: string | null }[]>([]);
@@ -267,6 +267,14 @@ export default function Approval() {
               }`}
             >
               참조문서함
+            </button>
+            <button
+              onClick={() => setActiveTab('processed')}
+              className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer border-0 outline-none ${
+                activeTab === 'processed' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              결재/반려함
             </button>
           </div>
         </div>

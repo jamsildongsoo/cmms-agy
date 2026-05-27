@@ -154,6 +154,20 @@ public class ApprovalService {
                 .toList();
     }
 
+    /** 결재/반려함: 본인이 결재/합의자로서 이미 처리(승인 Y 또는 반려 N)한 문서. 기안(D)·참조(R) 제외. */
+    public List<Approval> getProcessedApprovals(String companyId, String userId) {
+        List<String> appIds = approvalStepRepository.findByCompanyIdAndApproverId(companyId, userId).stream()
+                .filter(step -> step.getApprovalResult() != null) // 처리됨(Y 승인 / N 반려)
+                .filter(this::isApprovalOrAgreement)               // 결재/합의자로서만
+                .map(ApprovalStep::getApprovalId)
+                .distinct()
+                .toList();
+
+        return approvalRepository.findByCompanyIdAndDeleteYn(companyId, "N").stream()
+                .filter(a -> appIds.contains(a.getId()))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public ApprovalDetailResponse getApprovalDetails(String companyId, String id) {
         Approval approval = approvalRepository.findById(new ApprovalId(companyId, id))

@@ -44,6 +44,12 @@ public class ApprovalController {
         return ResponseEntity.ok(approvalService.getReferencedApprovals(principal.getCompanyId(), principal.getUsername()));
     }
 
+    @GetMapping("/processed")
+    @PreAuthorize("@perm.check('APPROVAL','R')")
+    public ResponseEntity<List<Approval>> getProcessedApprovals(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(approvalService.getProcessedApprovals(principal.getCompanyId(), principal.getUsername()));
+    }
+
     @GetMapping("/{id}/details")
     @PreAuthorize("@perm.check('APPROVAL','R')")
     public ResponseEntity<ApprovalDetailResponse> getApprovalDetails(
