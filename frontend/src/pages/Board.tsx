@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axios';
 import { useAuthStore } from '../store/useAuthStore';
+import FileUpload from '../components/FileUpload';
 import { 
   Plus, Trash, Download, X, Megaphone, MessageSquare, ChevronRight 
 } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function Board() {
   const [formContent, setFormContent] = useState('');
   const [formNoticeYn, setFormNoticeYn] = useState('N');
   const [formBoardType, setFormBoardType] = useState('FREE'); // Default FREE
+  const [formFileGroupId, setFormFileGroupId] = useState<number | null>(null);
 
   // Comment input
   const [newCommentContent, setNewCommentContent] = useState('');
@@ -83,6 +85,7 @@ export default function Board() {
     setFormContent('');
     setFormNoticeYn('N');
     setFormBoardType('FREE');
+    setFormFileGroupId(null);
     setIsFormOpen(true);
   };
 
@@ -92,6 +95,7 @@ export default function Board() {
     setFormContent(post.content);
     setFormNoticeYn(post.noticeYn);
     setFormBoardType(post.boardTypeCode);
+    setFormFileGroupId(post.fileGroupId);
     setIsFormOpen(true);
   };
 
@@ -107,7 +111,8 @@ export default function Board() {
         boardTypeCode: formBoardType,
         title: formTitle,
         content: formContent,
-        noticeYn: formNoticeYn
+        noticeYn: formNoticeYn,
+        fileGroupId: formFileGroupId
       };
       await axiosInstance.post('/board', payload);
       alert('저장 완료되었습니다.');
@@ -335,6 +340,9 @@ export default function Board() {
                 {selectedPost.content}
               </div>
 
+              {/* 첨부파일 (읽기 전용) */}
+              <FileUpload groupNo={selectedPost.fileGroupId} refModule="BOARD" readOnly />
+
               {/* Comment Section (Single layer) */}
               <div className="space-y-4">
                 <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
@@ -458,6 +466,14 @@ export default function Board() {
                     value={formContent}
                     onChange={(e) => setFormContent(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none resize-none font-sans"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-500 mb-1.5">첨부파일</label>
+                  <FileUpload
+                    groupNo={formFileGroupId}
+                    refModule="BOARD"
+                    onGroupNoChange={setFormFileGroupId}
                   />
                 </div>
               </div>

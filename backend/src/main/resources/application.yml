@@ -56,3 +56,7 @@ cloud:
       auto: false
     endpoint: ${STORAGE_ENDPOINT}
     allowed-mimes: ${STORAGE_ALLOWED_MIMES:image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/x-hwp,application/vnd.hancom.hwp,application/hwp+zip,application/vnd.hancom.hwpx,application/zip,application/x-zip-compressed}
+    # 고아 객체 정리(reconciliation) — 기본 비활성. 메타(file_attachment_item) 없는 S3 객체를 유예시간 경과 후 제거.
+    reconcile-enabled: ${STORAGE_RECONCILE_ENABLED:false}
+    reconcile-cron: ${STORAGE_RECONCILE_CRON:0 0 4 * * *}   # 매일 04:00
+    reconcile-grace-hours: ${STORAGE_RECONCILE_GRACE_HOURS:24}

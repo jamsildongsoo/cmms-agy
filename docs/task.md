@@ -92,10 +92,12 @@
         - [x] 테넌트 격리: 조회/다운로드/삭제 모두 복합키에 `companyId` 포함(타 테넌트 조회 시 not found), S3 key 접두사 `companyId`. 파일명 traversal 차단(baseName), 응답에 storage_path/checksum 미노출
     - [ ] **P2. 도메인 연동(file_group_id) — 1차: 게시판·결재만**
         - [ ] 게시판/결재 저장 시 `file_group_id` 세팅, 상세 조회 시 첨부 목록 로드
-    - [ ] **P3. 프론트엔드**
-        - [ ] 공통 `FileUpload.tsx`(드래그&드롭·다중·진행률·목록/삭제) — 업로드 후 fileGroupId를 폼에 보관
-        - [ ] 결재(Approval.tsx)·게시글(Board.tsx) 첨부 UI + 다운로드 연동
-    - [ ] **P4(선택/후속)**: 설비/PM/WO/WP 확대 + **고아 객체 정리(reconciliation) 작업**(soft-delete됐으나 S3 삭제 실패분, 업로드 중단 고아 주기 정리)
+    - [x] **P3. 프론트엔드** — 빌드(타입체크) 검증 완료
+        - [x] 공통 `FileUpload.tsx`(드래그&드롭·다중·진행률·목록/삭제, 업로드 후 fileGroupId를 상위 폼에 전달, 인증 axios blob 다운로드)
+        - [x] 결재(Approval.tsx 상신/상세, refModule=APR)·게시글(Board.tsx 작성/상세, refModule=BOARD) 첨부 UI + 다운로드 연동
+    - [~] **P4(선택/후속)**
+        - [x] **고아 객체 정리(reconciliation)**: `FileReconciliationService` `@Scheduled`(cron, 기본 비활성 `cloud.aws.reconcile-enabled=false`) — 메타 없는 S3 객체를 유예시간(`reconcile-grace-hours`) 경과 후 제거(삭제 시 @Async 실패분·업로드 중단 고아 청소). `@EnableScheduling`(AsyncConfig). 컴파일 검증 완료.
+        - [ ] ~~설비/PM/WO/WP 확대~~ — **범위 제외(확정)**. 필요 시 별도 진행.
     - **보안 체크**: 테넌트 격리, MIME/확장자/크기 검증, stored UUID·경로 traversal 차단, (선택) 매직넘버 검사. 첨부 권한은 우선 인증만(후속: 대상 모듈 권한 연계).
 
 - [ ] **[보류/보안] CORS 설정 강화** (검토 완료, 현재 변경 보류)

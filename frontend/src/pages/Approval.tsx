@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axios';
 import { useAuthStore } from '../store/useAuthStore';
+import FileUpload from '../components/FileUpload';
 import { 
   FileSignature, Check, X, Printer, ArrowRight, Plus 
 } from 'lucide-react';
@@ -50,6 +51,7 @@ export default function Approval() {
   const [newRefNo, setNewRefNo] = useState('');
   const [newRefModule, setNewRefModule] = useState('');
   const [selectedLine, setSelectedLine] = useState<{ approverId: string; type: string }[]>([]);
+  const [newFileGroupId, setNewFileGroupId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -106,6 +108,7 @@ export default function Approval() {
     setNewRefNo('');
     setNewRefModule('');
     setSelectedLine([]);
+    setNewFileGroupId(null);
     setIsDraftModalOpen(true);
   };
 
@@ -133,7 +136,8 @@ export default function Approval() {
       const payload = {
         approval: {
           title: newTitle,
-          content: newContent
+          content: newContent,
+          fileGroupId: newFileGroupId
         },
         steps: selectedLine.map(l => ({
           approverId: l.approverId,
@@ -386,6 +390,11 @@ export default function Approval() {
                     {selectedApproval.content || '(본문 내용 없음)'}
                   </div>
                 </div>
+
+                <div className="print:hidden">
+                  <span className="text-[10px] font-bold text-slate-500 block mb-1.5">첨부파일</span>
+                  <FileUpload groupNo={selectedApproval.fileGroupId} refModule="APR" readOnly />
+                </div>
               </div>
 
               {/* Comments and Steps History */}
@@ -540,6 +549,14 @@ export default function Approval() {
                     value={newContent}
                     onChange={(e) => setNewContent(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 outline-none font-sans"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-400 mb-1.5">첨부파일</label>
+                  <FileUpload
+                    groupNo={newFileGroupId}
+                    refModule="APR"
+                    onGroupNoChange={setNewFileGroupId}
                   />
                 </div>
               </div>
