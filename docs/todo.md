@@ -69,9 +69,13 @@
   - [x] enum 4종 생성 `com.cmms.constant`: `SeqModule`, `RoleType`, `DocStatus`, `ApprovalStepType`
   - [x] ApprovalService 외부 리터럴 치환 — 채번모듈(WO/WP/PM 호출부), `PermissionChecker`의 SYSTEM, `PmService`의 status
   - [x] `db_specification §5` 정본 코드표 작성 + 기존 불일치 주석(approval_result `D/A/R/W`) 정정
-- **Phase 2 (미적용, 동작 변경 → 런타임 검증 필요)**:
-  - [ ] `approval_result`를 빈칸(대기)/`Y`(승인)/`N`(반려)로 전환 — `submitApproval`/`getPendingApprovals`/`processApprovalAction` 로직 재작성("현재 차례"를 저장 대신 계산), 엔티티 `nullable`, `V4` 마이그레이션(`T`/`P`→NULL, `A`→`Y`, `R`→`N` + DROP NOT NULL)
-  - [ ] 위 작업과 함께 ApprovalService 내부 `DocStatus`/`ApprovalStepType` 리터럴 치환(같은 메서드라 묶어서)
+- **Phase 2 (코드 구현 완료, ⚠️ 런타임 테스트 보류 — 동작 변경)**:
+  - [x] `approval_result`를 빈칸(대기)/`Y`(승인)/`N`(반려)로 전환 — `submitApproval`/`getPendingApprovals`/`processApprovalAction` 로직 재작성("현재 차례"를 저장 대신 계산), 엔티티 `nullable`, `V4` 마이그레이션
+  - [x] ApprovalService 내부 `DocStatus`/`ApprovalStepType`/`SeqModule` 리터럴 치환
+  - [x] 결재자 없이 상신 → 임시저장(`TEMP`), 라우팅 안 함 / 상신함은 임시저장도 조회됨
+  - [x] 재상신: 기존 임시저장 문서 id로 상신 시 단계 재생성 후 라우팅
+  - [ ] **런타임 테스트**(다단계 진행·반려 후 비노출·완결 전파·V4 데이터 변환·임시저장/재상신) — 추후 함께
+  - [ ] (FE) 상신함에서 임시저장 표시 + 편집/재상신 UI 연동 확인
 
 ---
 

@@ -115,3 +115,28 @@
 사용자에게 일관된 JSON(`{status, message}`)을 주도록 처리(이전 리뷰 M5):
 - `GlobalExceptionHandler`(`@RestControllerAdvice`): 비즈니스 검증 실패 400, `@PreAuthorize` 거부 403, 무결성 위반(동시 입고 PK 충돌 등) 409 "재시도", 그 외 500.
 - `SecurityConfig`의 필터 단계 핸들러: 미인증/토큰만료 `AuthenticationEntryPoint` 401, 필터 단계 권한거부 `AccessDeniedHandler` 403.
+
+### 입력 형식 오류 일괄 400
+잘못된 입력 예외(타입 불일치·필수 파라미터 누락·본문 파싱 실패·`@Valid` 위반·`DateTimeParse`)를 `GlobalExceptionHandler`에서 400으로 일괄 매핑. `closeMonth`의 `closingYm`은 `YYYYMM` 형식 검증 추가(미부합 시 400, 기존 substring/parse 500 방지).
+
+---
+
+## 멀티테넌트 격리: 회사별 SYSTEM 역할 제거
+
+`setupNewCompany`가 신규 회사마다 생성하던 표준 역할에서 **SYSTEM 제거** → `ADMIN/MANAGER/USER`만 생성. 회사별 SYSTEM 역할은 사내 ADMIN이 `updateUser`로 사용자를 SYSTEM으로 올리면 권한 매트릭스 우회 + `hasRole('SYSTEM')`로 열리는 Company API(`getAllCompanies` 전 테넌트 반환)를 통해 **타 회사 데이터 접근**이 가능한 격리 위반 경로였다. SYSTEM 역할은 시드 SYSTEM 테넌트(`sysadmin`) 전용.
+> 잔여(todo C5): 기존에 생성된 회사별 SYSTEM 역할 정리(마이그레이션), 롤 배정 시 SYSTEM 할당 차단.
+
+---
+
+## 코드 상수화 (매직 스트링 → enum) + 정본 코드표
+
+상태/유형 코드를 타입 안전하게 정리. **정본은 `db_specification.md §5`** (상태·유형 코드 단일 소스).
+- enum 4종(`com.cmms.constant`): `SeqModule`(WO/WP/PM/APR), `RoleType`, `DocStatus`(T/P/C/S/R/X), `ApprovalStepType`(D/A/G/R). 엔티티 컬럼은 `String` 유지(DB 무변경), 서비스 로직 리터럴만 치환.
+- 원칙: **상호배타 다중상태 = 단일 코드(enum)**, **이분값 = `Y`/`N` 플래그**. 채번 모듈(`APR`)과 권한 모듈(`APPROVAL`)은 별개 네임스페이스.
+
+### 결재 결과 코드 정리 + 임시저장/재상신 (⚠️ 컴파일 검증, 런타임 테스트 보류)
+- **`approval_result`를 빈칸(대기)/`Y`(승인)/`N`(반려)로 전환**(enum 없이 Y/N 플래그). "현재 차례"는 저장하지 않고 **단계 순서 + 직전 단계 승인 여부로 계산**. 엔티티 nullable + `V4` 마이그레이션(`A`→`Y`, `R`→`N`, `T`/`P`→NULL, DROP NOT NULL).
+- `processApprovalAction`: 종료 문서 가드(진행중만 처리), 승인 시 남은 미처리 단계 없으면 완결확정, 반려 시 문서 `REJECTED`.
+- **결재자(결재/합의) 없이 상신 시 → 임시저장(`TEMP`)**(라우팅·연계모듈 결재중 처리 안 함). 상신함(`getSentApprovals`)은 상태 무관 반환이라 임시저장도 조회됨.
+- **재상신**: `submitApproval`이 기존 문서 id를 받으면(임시저장 상태에 한해) 단계 제거 후 재생성하여 다시 상신. 결재자가 추가되면 `IN_PROGRESS`로 라우팅.
+- 검증: 컴파일 통과. **결재 워크플로 동작 변경분은 런타임 테스트 추후 진행 예정**(다단계 진행/반려 후 비노출/완결 전파/V4 데이터 변환).

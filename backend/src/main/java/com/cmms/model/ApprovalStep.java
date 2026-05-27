@@ -30,8 +30,8 @@ public class ApprovalStep {
     @Column(name = "approval_type", nullable = false, columnDefinition = "char(1)")
     private String approvalType; // D: 기안, A: 결재, G: 합의, R: 참조
 
-    @Column(name = "approval_result", nullable = false, columnDefinition = "char(1)")
-    private String approvalResult; // T: 작성/대기, P: 결재대기(진행), A: 승인(완료), R: 반려
+    @Column(name = "approval_result", columnDefinition = "char(1)")
+    private String approvalResult; // 빈칸(NULL): 대기, Y: 승인, N: 반려 (정본 db_specification §5.3)
 
     @Column(name = "action_at")
     private LocalDateTime actionAt;

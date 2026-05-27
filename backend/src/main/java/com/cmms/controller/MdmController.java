@@ -18,39 +18,7 @@ public class MdmController {
     @Autowired
     private MdmService mdmService;
 
-    // ==========================================
-    // 1. 회사 (Company)
-    // ==========================================
-    @GetMapping("/companies")
-    @PreAuthorize("hasRole('SYSTEM')")
-    public ResponseEntity<List<Company>> getAllCompanies() {
-        return ResponseEntity.ok(mdmService.getAllCompanies());
-    }
-
-    @GetMapping("/companies/{id}")
-    @PreAuthorize("hasRole('SYSTEM')")
-    public ResponseEntity<Company> getCompanyById(@PathVariable String id) {
-        return ResponseEntity.ok(mdmService.getCompanyById(id));
-    }
-
-    @PostMapping("/companies")
-    @PreAuthorize("hasRole('SYSTEM')")
-    public ResponseEntity<Company> createCompany(@RequestBody Company company, @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(mdmService.saveCompany(company, principal.getUsername()));
-    }
-
-    @PutMapping("/companies/{id}")
-    @PreAuthorize("hasRole('SYSTEM')")
-    public ResponseEntity<Company> updateCompany(@PathVariable String id, @RequestBody Company company, @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(mdmService.updateCompany(id, company, principal.getUsername()));
-    }
-
-    @DeleteMapping("/companies/{id}")
-    @PreAuthorize("hasRole('SYSTEM')")
-    public ResponseEntity<Void> deleteCompany(@PathVariable String id, @AuthenticationPrincipal UserPrincipal principal) {
-        mdmService.deleteCompany(id, principal.getUsername());
-        return ResponseEntity.ok().build();
-    }
+    // 회사(Company)는 CompanyController/CompanyService로 분리(경로 동일: /api/mdm/companies, SYSTEM 전용).
 
     // ==========================================
     // 2. 플랜트 (Plant)

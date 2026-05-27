@@ -1,5 +1,8 @@
 package com.cmms.service;
 
+import com.cmms.constant.ApprovalStepType;
+import com.cmms.constant.DocStatus;
+import com.cmms.constant.SeqModule;
 import com.cmms.dto.ApprovalDto.*;
 import com.cmms.model.*;
 import com.cmms.repository.*;
@@ -42,27 +45,47 @@ public class ApprovalService {
         Approval approval = request.getApproval();
         approval.setCompanyId(companyId);
 
-        String appNo = sequenceService.generateNextNo(companyId, "APR", "DEPT_ROOT");
-        approval.setId(appNo);
-        approval.setDrafterId(operator);
-        approval.setStatus("P"); // 진행
-        approval.setCreatedBy(operator);
+        List<ApprovalStep> steps = request.getSteps();
+        // 결재/합의 대상이 한 명이라도 있으면 진행(라우팅), 없으면 임시저장
+        boolean hasApprover = steps != null && steps.stream().anyMatch(this::isApprovalOrAgreement);
+
+        boolean isNew = approval.getId() == null || approval.getId().trim().isEmpty();
+        String appNo;
+        if (isNew) {
+            appNo = sequenceService.generateNextNo(companyId, SeqModule.APR.code(), "DEPT_ROOT");
+            approval.setId(appNo);
+            approval.setDrafterId(operator);
+            approval.setCreatedBy(operator);
+        } else {
+            // 재상신: 임시저장 상태에서만 허용. 기존 단계는 제거 후 재생성한다.
+            appNo = approval.getId();
+            Approval existing = approvalRepository.findById(new ApprovalId(companyId, appNo))
+                    .filter(a -> "N".equals(a.getDeleteYn()))
+                    .orElseThrow(() -> new IllegalArgumentException("결재 문서를 찾을 수 없습니다."));
+            if (!DocStatus.TEMP.code().equals(existing.getStatus())) {
+                throw new IllegalArgumentException("임시저장 상태에서만 재상신할 수 있습니다.");
+            }
+            approval.setDrafterId(existing.getDrafterId());
+            approval.setCreatedBy(existing.getCreatedBy());
+            approvalStepRepository.deleteByCompanyIdAndApprovalId(companyId, appNo);
+            approvalStepRepository.flush();
+        }
+
+        approval.setStatus(hasApprover ? DocStatus.IN_PROGRESS.code() : DocStatus.TEMP.code());
         approval.setUpdatedBy(operator);
         approval.setDeleteYn("N");
 
         Approval savedApproval = approvalRepository.save(approval);
 
-        // 단계 리스트 저장
-        List<ApprovalStep> steps = request.getSteps();
-        
+        // 단계 저장 (steps/hasApprover는 위에서 계산됨)
         // 0. 기안자 자동 추가 (0순번)
         ApprovalStep draftStep = new ApprovalStep();
         draftStep.setCompanyId(companyId);
         draftStep.setApprovalId(appNo);
         draftStep.setStepNo(0);
         draftStep.setApproverId(operator);
-        draftStep.setApprovalType("D");
-        draftStep.setApprovalResult("A"); // 기안 시점 완료
+        draftStep.setApprovalType(ApprovalStepType.DRAFT.code());
+        draftStep.setApprovalResult("Y"); // 기안 = 처리완료
         draftStep.setActionAt(LocalDateTime.now());
         draftStep.setComments("상신함");
         approvalStepRepository.save(draftStep);
@@ -74,23 +97,19 @@ public class ApprovalService {
                 step.setCompanyId(companyId);
                 step.setApprovalId(appNo);
                 step.setStepNo(i + 1);
-                
-                // 첫 결재자(1번)는 'P'(결재진행), 나머지는 'T'(대기)
-                if (i == 0) {
-                    step.setApprovalResult("P");
-                } else {
-                    step.setApprovalResult("T");
-                }
-                
+
+                // 결재선 단계는 모두 대기(빈칸/NULL). '현재 차례'는 저장하지 않고 순서로 계산한다.
+                step.setApprovalResult(null);
+
                 approvalStepRepository.save(step);
             }
         }
 
-        // 연계 모듈 상태값 업데이트
+        // 연계 모듈 상태값 업데이트 — 실제 라우팅(결재자 있음)일 때만 '결재중' 처리
         String refNo = request.getRefNo();
         String refModule = request.getRefModule();
-        if (refNo != null && refModule != null) {
-            updateLinkedModuleStatus(companyId, refModule, refNo, appNo, "P", operator);
+        if (hasApprover && refNo != null && refModule != null) {
+            updateLinkedModuleStatus(companyId, refModule, refNo, appNo, DocStatus.IN_PROGRESS.code(), operator);
         }
 
         return savedApproval;
@@ -105,15 +124,18 @@ public class ApprovalService {
 
     @Transactional(readOnly = true)
     public List<Approval> getPendingApprovals(String companyId, String userId) {
-        // 본인 차례에 와 있는 대기결재('P')인 단계를 수집
+        // 본인이 결재/합의 대상이고 미처리(NULL)이며, 그 문서의 '현재 차례'가 본인인 건을 수집
         List<String> appIds = approvalStepRepository.findByCompanyIdAndApproverId(companyId, userId).stream()
-                .filter(step -> "P".equals(step.getApprovalResult()))
-                .filter(step -> "A".equals(step.getApprovalType()) || "G".equals(step.getApprovalType())) // 결재, 합의
+                .filter(step -> step.getApprovalResult() == null)
+                .filter(this::isApprovalOrAgreement) // 결재, 합의
                 .map(ApprovalStep::getApprovalId)
+                .distinct()
+                .filter(appId -> isCurrentTurn(companyId, appId, userId))
                 .toList();
 
         return approvalRepository.findAll().stream()
                 .filter(a -> companyId.equals(a.getCompanyId()) && "N".equals(a.getDeleteYn()))
+                .filter(a -> DocStatus.IN_PROGRESS.code().equals(a.getStatus())) // 진행중 문서만(반려/완결 제외)
                 .filter(a -> appIds.contains(a.getId()))
                 .toList();
     }
@@ -122,7 +144,7 @@ public class ApprovalService {
     public List<Approval> getReferencedApprovals(String companyId, String userId) {
         // 본인이 참조자('R')인 결재 문서들을 조회
         List<String> appIds = approvalStepRepository.findByCompanyIdAndApproverId(companyId, userId).stream()
-                .filter(step -> "R".equals(step.getApprovalType()))
+                .filter(step -> ApprovalStepType.REFERENCE.code().equals(step.getApprovalType()))
                 .map(ApprovalStep::getApprovalId)
                 .toList();
 
@@ -152,56 +174,50 @@ public class ApprovalService {
                 .filter(a -> "N".equals(a.getDeleteYn()))
                 .orElseThrow(() -> new IllegalArgumentException("결재 문서를 찾을 수 없습니다."));
 
+        if (!DocStatus.IN_PROGRESS.code().equals(approval.getStatus())) {
+            throw new IllegalArgumentException("이미 종료된 결재 문서입니다.");
+        }
+
         List<ApprovalStep> steps = approvalStepRepository.findByCompanyIdAndApprovalIdOrderByStepNoAsc(companyId, id);
 
-        // 현재 처리 주체 단계 찾기
+        // 현재 차례 = 가장 앞선(stepNo 최소) 미처리(NULL) 결재/합의 단계. 그 단계 결재자가 본인이어야 한다.
         ApprovalStep currentStep = steps.stream()
-                .filter(step -> approverId.equals(step.getApproverId()) && "P".equals(step.getApprovalResult()))
+                .filter(this::isApprovalOrAgreement)
+                .filter(step -> step.getApprovalResult() == null)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("결재할 수 있는 권한이 없거나 대기 중이 아닙니다."));
+                .orElseThrow(() -> new IllegalArgumentException("결재 대기 중인 단계가 없습니다."));
+        if (!approverId.equals(currentStep.getApproverId())) {
+            throw new IllegalArgumentException("결재할 수 있는 권한이 없거나 대기 중이 아닙니다.");
+        }
 
         if ("APPROVE".equalsIgnoreCase(request.getAction())) {
-            currentStep.setApprovalResult("A"); // 승인 완료
+            currentStep.setApprovalResult("Y"); // 승인
             currentStep.setActionAt(LocalDateTime.now());
             currentStep.setComments(request.getComments());
             approvalStepRepository.save(currentStep);
 
-            // 다음 결재 단계 찾기
-            Optional<ApprovalStep> nextStepOpt = steps.stream()
-                    .filter(step -> step.getStepNo() > currentStep.getStepNo())
-                    .filter(step -> "A".equals(step.getApprovalType()) || "G".equals(step.getApprovalType()))
-                    .findFirst();
+            // 남은 미처리(NULL) 결재/합의 단계가 없으면 완결 확정
+            boolean hasNextPending = steps.stream()
+                    .filter(this::isApprovalOrAgreement)
+                    .anyMatch(step -> step.getApprovalResult() == null);
 
-            if (nextStepOpt.isPresent()) {
-                // 다음 결재자가 있으면 락 해제
-                ApprovalStep nextStep = nextStepOpt.get();
-                nextStep.setApprovalResult("P");
-                approvalStepRepository.save(nextStep);
-            } else {
-                // 더이상 결재자가 없으면 결재 완결 승인('C') 처리
-                approval.setStatus("C");
+            if (!hasNextPending) {
+                approval.setStatus(DocStatus.CONFIRMED.code());
                 approval.setUpdatedBy(approverId);
                 approvalRepository.save(approval);
 
                 // 연계 모듈 완결 승인 전파
                 propagateFinalConfirmation(companyId, id, approverId);
             }
+            // 다음 단계 별도 활성화 불필요 — 다음 미처리(NULL) 단계가 자동으로 '현재 차례'가 됨
         } else if ("REJECT".equalsIgnoreCase(request.getAction())) {
-            // 반려 처리
-            currentStep.setApprovalResult("R"); // 반려
+            currentStep.setApprovalResult("N"); // 반려
             currentStep.setActionAt(LocalDateTime.now());
             currentStep.setComments(request.getComments());
             approvalStepRepository.save(currentStep);
 
-            // 이후 단계들 전부 종료 대기 처리
-            steps.stream()
-                    .filter(step -> step.getStepNo() > currentStep.getStepNo())
-                    .forEach(step -> {
-                        step.setApprovalResult("T");
-                        approvalStepRepository.save(step);
-                    });
-
-            approval.setStatus("R"); // 반려
+            // 이후 단계는 대기(NULL)로 남기고, 문서를 반려로 종료(문서 상태가 추가 진행을 차단)
+            approval.setStatus(DocStatus.REJECTED.code());
             approval.setUpdatedBy(approverId);
             approvalRepository.save(approval);
 
@@ -246,7 +262,7 @@ public class ApprovalService {
         pmRecordRepository.findAll().stream()
                 .filter(pm -> companyId.equals(pm.getCompanyId()) && approvalId.equals(pm.getApprovalId()))
                 .findFirst().ifPresent(pm -> {
-                    pm.setStatus("C");
+                    pm.setStatus(DocStatus.CONFIRMED.code());
                     pm.setUpdatedBy(operator);
                     pmRecordRepository.save(pm);
 
@@ -258,7 +274,7 @@ public class ApprovalService {
         workOrderRepository.findAll().stream()
                 .filter(wo -> companyId.equals(wo.getCompanyId()) && approvalId.equals(wo.getApprovalId()))
                 .findFirst().ifPresent(wo -> {
-                    wo.setStatus("C");
+                    wo.setStatus(DocStatus.CONFIRMED.code());
                     wo.setUpdatedBy(operator);
                     workOrderRepository.save(wo);
                 });
@@ -267,7 +283,7 @@ public class ApprovalService {
         workPermitRepository.findAll().stream()
                 .filter(wp -> companyId.equals(wp.getCompanyId()) && approvalId.equals(wp.getApprovalId()))
                 .findFirst().ifPresent(wp -> {
-                    wp.setStatus("C");
+                    wp.setStatus(DocStatus.CONFIRMED.code());
                     wp.setUpdatedBy(operator);
                     workPermitRepository.save(wp);
                 });
@@ -278,7 +294,7 @@ public class ApprovalService {
         pmRecordRepository.findAll().stream()
                 .filter(pm -> companyId.equals(pm.getCompanyId()) && approvalId.equals(pm.getApprovalId()))
                 .findFirst().ifPresent(pm -> {
-                    pm.setStatus("R");
+                    pm.setStatus(DocStatus.REJECTED.code());
                     pm.setUpdatedBy(operator);
                     pmRecordRepository.save(pm);
                 });
@@ -287,7 +303,7 @@ public class ApprovalService {
         workOrderRepository.findAll().stream()
                 .filter(wo -> companyId.equals(wo.getCompanyId()) && approvalId.equals(wo.getApprovalId()))
                 .findFirst().ifPresent(wo -> {
-                    wo.setStatus("R");
+                    wo.setStatus(DocStatus.REJECTED.code());
                     wo.setUpdatedBy(operator);
                     workOrderRepository.save(wo);
                 });
@@ -296,7 +312,7 @@ public class ApprovalService {
         workPermitRepository.findAll().stream()
                 .filter(wp -> companyId.equals(wp.getCompanyId()) && approvalId.equals(wp.getApprovalId()))
                 .findFirst().ifPresent(wp -> {
-                    wp.setStatus("R");
+                    wp.setStatus(DocStatus.REJECTED.code());
                     wp.setUpdatedBy(operator);
                     workPermitRepository.save(wp);
                 });
@@ -321,5 +337,21 @@ public class ApprovalService {
             case "Y" -> lastDate.plusYears(val);
             default -> lastDate.plusMonths(val);
         };
+    }
+
+    // 결재/합의 단계인지
+    private boolean isApprovalOrAgreement(ApprovalStep s) {
+        return ApprovalStepType.APPROVAL.code().equals(s.getApprovalType())
+                || ApprovalStepType.AGREEMENT.code().equals(s.getApprovalType());
+    }
+
+    // 해당 문서의 '현재 차례'(가장 앞선 미처리 결재/합의 단계)의 결재자가 userId인가
+    private boolean isCurrentTurn(String companyId, String approvalId, String userId) {
+        return approvalStepRepository.findByCompanyIdAndApprovalIdOrderByStepNoAsc(companyId, approvalId).stream()
+                .filter(this::isApprovalOrAgreement)
+                .filter(step -> step.getApprovalResult() == null)
+                .findFirst()
+                .map(step -> userId.equals(step.getApproverId()))
+                .orElse(false);
     }
 }

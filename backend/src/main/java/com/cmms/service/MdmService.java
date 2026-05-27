@@ -13,9 +13,6 @@ import java.util.List;
 public class MdmService {
 
     @Autowired
-    private CompanyRepository companyRepository;
-
-    @Autowired
     private PlantRepository plantRepository;
 
     @Autowired
@@ -42,47 +39,7 @@ public class MdmService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // ==========================================
-    // 1. 회사 (Company)
-    // ==========================================
-    @Transactional(readOnly = true)
-    public List<Company> getAllCompanies() {
-        return companyRepository.findAll().stream()
-                .filter(c -> "N".equals(c.getDeleteYn()))
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public Company getCompanyById(String id) {
-        return companyRepository.findById(id)
-                .filter(c -> "N".equals(c.getDeleteYn()))
-                .orElseThrow(() -> new IllegalArgumentException("회사를 찾을 수 없습니다."));
-    }
-
-    @Transactional
-    public Company saveCompany(Company company, String operator) {
-        company.setCreatedBy(operator);
-        company.setUpdatedBy(operator);
-        return companyRepository.save(company);
-    }
-
-    @Transactional
-    public Company updateCompany(String id, Company req, String operator) {
-        Company company = getCompanyById(id);
-        company.setName(req.getName());
-        company.setBusinessNumber(req.getBusinessNumber());
-        company.setEmail(req.getEmail());
-        company.setUpdatedBy(operator);
-        return companyRepository.save(company);
-    }
-
-    @Transactional
-    public void deleteCompany(String id, String operator) {
-        Company company = getCompanyById(id);
-        company.setDeleteYn("Y");
-        company.setUpdatedBy(operator);
-        companyRepository.save(company);
-    }
+    // 회사(Company) CRUD는 CompanyService로 분리.
 
     // ==========================================
     // 2. 플랜트 (Plant)
