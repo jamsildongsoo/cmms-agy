@@ -2,6 +2,7 @@ package com.cmms.service;
 
 import com.cmms.model.*;
 import com.cmms.repository.*;
+import com.cmms.util.CodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ public class MdmService {
 
     @Transactional
     public Plant savePlant(String companyId, Plant plant, String operator) {
+        plant.setId(CodeUtil.normalize(plant.getId()));
         PlantId id = new PlantId(companyId, plant.getId());
         if (plantRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 플랜트 아이디입니다.");
@@ -91,6 +93,10 @@ public class MdmService {
 
     @Transactional
     public Department saveDepartment(String companyId, Department dept, String operator) {
+        dept.setId(CodeUtil.normalize(dept.getId()));
+        if (dept.getParentId() != null && !dept.getParentId().trim().isEmpty()) {
+            dept.setParentId(CodeUtil.normalize(dept.getParentId()));
+        }
         DepartmentId id = new DepartmentId(companyId, dept.getId());
         if (departmentRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 부서 아이디입니다.");
@@ -137,6 +143,7 @@ public class MdmService {
 
     @Transactional
     public Role saveRole(String companyId, Role role, String operator) {
+        role.setId(CodeUtil.normalize(role.getId()));
         RoleId id = new RoleId(companyId, role.getId());
         if (roleRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 권한 그룹 아이디입니다.");
@@ -207,6 +214,8 @@ public class MdmService {
         if (userRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 사용자 아이디입니다.");
         }
+        user.setRoleId(CodeUtil.normalizeOptional(user.getRoleId()));
+        user.setDepartmentId(CodeUtil.normalizeOptional(user.getDepartmentId()));
         user.setCompanyId(companyId);
         user.setPasswordHash(passwordEncoder.encode("1234")); // 신규 등록 사용자 임시 비밀번호 디폴트 1234 지정
         user.setCreatedBy(operator);
@@ -220,8 +229,8 @@ public class MdmService {
                 .filter(u -> "N".equals(u.getDeleteYn()))
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
         user.setName(req.getName());
-        user.setDepartmentId(req.getDepartmentId());
-        user.setRoleId(req.getRoleId());
+        user.setDepartmentId(CodeUtil.normalizeOptional(req.getDepartmentId()));
+        user.setRoleId(CodeUtil.normalizeOptional(req.getRoleId()));
         user.setEmail(req.getEmail());
         user.setPhone(req.getPhone());
         user.setPosition(req.getPosition());
@@ -251,6 +260,7 @@ public class MdmService {
 
     @Transactional
     public Warehouse saveWarehouse(String companyId, Warehouse warehouse, String operator) {
+        warehouse.setId(CodeUtil.normalize(warehouse.getId()));
         WarehouseId id = new WarehouseId(companyId, warehouse.getId());
         if (warehouseRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 저장소 아이디입니다.");
@@ -291,6 +301,7 @@ public class MdmService {
 
     @Transactional
     public CodeGroup saveCodeGroup(String companyId, CodeGroup group, String operator) {
+        group.setId(CodeUtil.normalize(group.getId()));
         CodeGroupId id = new CodeGroupId(companyId, group.getId());
         if (codeGroupRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 코드그룹 아이디입니다.");
@@ -331,6 +342,8 @@ public class MdmService {
 
     @Transactional
     public CodeItem saveCodeItem(String companyId, String groupId, CodeItem item) {
+        groupId = CodeUtil.normalize(groupId);
+        item.setId(CodeUtil.normalize(item.getId()));
         CodeItemId id = new CodeItemId(companyId, groupId, item.getId());
         if (codeItemRepository.existsById(id)) {
             throw new IllegalArgumentException("이미 존재하는 코드아이템 아이디입니다.");

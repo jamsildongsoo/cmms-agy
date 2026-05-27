@@ -1,7 +1,8 @@
-import { 
-  Wrench, Package, ClipboardList, FileSignature,  
-  Layers, Bell, User, LayoutDashboard
+import {
+  Wrench, Package, ClipboardList, FileSignature,
+  Layers, Bell, User, LayoutDashboard, ShieldCheck
 } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
 
 interface SidebarProps {
   activeTab: string;
@@ -9,9 +10,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+  const user = useAuthStore((s) => s.user);
 
-
-  const menuItems = [
+  const menuItems: any[] = [
     { id: 'dashboard', label: '대시보드', icon: LayoutDashboard },
     { 
       category: '기준 정보 (MDM)', 
@@ -45,6 +46,13 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     }
   ];
 
+  if (user?.roleId?.toUpperCase() === 'SYSTEM') {
+    menuItems.push({
+      category: '시스템',
+      items: [{ id: 'system', label: '시스템 관리', icon: ShieldCheck }]
+    });
+  }
+
   return (
     <aside className="w-56 bg-slate-900 border-r border-slate-800 text-slate-300 flex flex-col shrink-0 print:hidden">
       <nav className="flex-1 overflow-y-auto p-3 space-y-5 pt-4">
@@ -55,7 +63,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                 <span className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">
                   {item.category}
                 </span>
-                {item.items?.map(subItem => {
+                {item.items?.map((subItem: any) => {
                   const Icon = subItem.icon;
                   const isActive = activeTab === subItem.id;
                   return (

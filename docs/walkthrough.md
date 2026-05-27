@@ -134,6 +134,19 @@
 - enum 4종(`com.cmms.constant`): `SeqModule`(WO/WP/PM/APR), `RoleType`, `DocStatus`(T/P/C/S/R/X), `ApprovalStepType`(D/A/G/R). 엔티티 컬럼은 `String` 유지(DB 무변경), 서비스 로직 리터럴만 치환.
 - 원칙: **상호배타 다중상태 = 단일 코드(enum)**, **이분값 = `Y`/`N` 플래그**. 채번 모듈(`APR`)과 권한 모듈(`APPROVAL`)은 별개 네임스페이스.
 
+### 코드 ID 정규화 (`CodeUtil`)
+모든 코드성 식별자를 **대문자 + `[A-Z0-9_-]`** 로 정규화(`CodeUtil.normalize`, 선택값은 `normalizeOptional`). 대상: companyId, roleId, departmentId, plantId, warehouseId, codeGroupId, codeItemId. 제외: userId(로그인 아이디), 이름, 생성 문서번호.
+- 적용: `CompanyService`(companyId), `AuthService`(signup/login companyId), `MdmService`(save* 코드 ID + user roleId/deptId). 기존 `CompanyCodeUtil` → `CodeUtil`로 통합.
+- 효과: 대소문자 중복 회사 방지 + **롤ID 케이스 불일치 권한 버그 해소**(signUp 대문자 vs 롤 생성 케이스 불일치).
+- 금지문자 사유: `:`(JWT subject), `/?#%& 공백`(URL), 따옴표류(SpEL).
+
+### SYSTEM 콘솔 — 전 테넌트 사용자/로그인이력 관리 (BE+FE)
+- BE: `SystemAdminController`(`/api/system`, SYSTEM 전용) + `SystemAdminService`. `companyId`를 파라미터로 받아 **교차 테넌트** 동작.
+  - `GET /api/system/users?companyId=`(옵션), `PUT /api/system/users/{companyId}/{userId}/use-yn`, `GET /api/system/login-history`.
+  - `SystemUserResponse` DTO(passwordHash 미포함). 안전장치: 플랫폼(`SYSTEM`) 테넌트 계정은 useYn 변경 불가.
+- FE: `SystemAdmin.tsx`(사용자 관리/로그인 이력 탭), Sidebar에 **SYSTEM 롤만** "시스템 관리" 메뉴 노출(`roleId` 대소문자 무시).
+- 온보딩 모델 완성: sysadmin이 회사 생성(롤·코드 시드) → 직원 참여 가입(useYn='N') → sysadmin이 SYSTEM 콘솔에서 활성화.
+
 ### 결재 결과 코드 정리 + 임시저장/재상신 (⚠️ 컴파일 검증, 런타임 테스트 보류)
 - **`approval_result`를 빈칸(대기)/`Y`(승인)/`N`(반려)로 전환**(enum 없이 Y/N 플래그). "현재 차례"는 저장하지 않고 **단계 순서 + 직전 단계 승인 여부로 계산**. 엔티티 nullable + `V4` 마이그레이션(`A`→`Y`, `R`→`N`, `T`/`P`→NULL, DROP NOT NULL).
 - `processApprovalAction`: 종료 문서 가드(진행중만 처리), 승인 시 남은 미처리 단계 없으면 완결확정, 반려 시 문서 `REJECTED`.

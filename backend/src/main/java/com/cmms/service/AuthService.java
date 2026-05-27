@@ -4,7 +4,7 @@ import com.cmms.dto.AuthDto.*;
 import com.cmms.model.*;
 import com.cmms.repository.*;
 import com.cmms.security.JwtTokenProvider;
-import com.cmms.util.CompanyCodeUtil;
+import com.cmms.util.CodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,7 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request, String ipAddress) {
-        String companyId = CompanyCodeUtil.normalize(request.getCompanyId());
+        String companyId = CodeUtil.normalize(request.getCompanyId());
 
         User user = userRepository.findByCompanyIdAndIdAndDeleteYnAndUseYn(
                 companyId, request.getId(), "N", "Y")
@@ -71,7 +71,7 @@ public class AuthService {
 
     @Transactional
     public void signUp(SignUpRequest request) {
-        String companyId = CompanyCodeUtil.normalize(request.getCompanyId());
+        String companyId = CodeUtil.normalize(request.getCompanyId());
 
         // 가입은 기존 회사 참여 전용 — 회사가 없으면 에러(회사 생성은 sysadmin 전용)
         if (!companyRepository.existsById(companyId)) {

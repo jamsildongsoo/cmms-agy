@@ -11,6 +11,7 @@ import WorkPermit from './WorkPermit';
 import InventoryTransaction from './InventoryTransaction';
 import Approval from './Approval';
 import Board from './Board';
+import SystemAdmin from './SystemAdmin';
 import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 
 export default function Dashboard() {
@@ -70,6 +71,8 @@ export default function Dashboard() {
         return <Approval />;
       case 'board':
         return <Board />;
+      case 'system':
+        return <SystemAdmin />;
       default:
         return (
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center max-w-2xl mx-auto mt-12">

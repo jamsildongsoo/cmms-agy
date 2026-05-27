@@ -3,7 +3,7 @@ package com.cmms.service;
 import com.cmms.model.*;
 import com.cmms.repository.*;
 import com.cmms.security.AppModule;
-import com.cmms.util.CompanyCodeUtil;
+import com.cmms.util.CodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +47,7 @@ public class CompanyService {
     /** 회사 생성 + 초기 시드(롤/권한매트릭스/공통코드 복사). */
     @Transactional
     public Company createCompany(Company company, String operator) {
-        String companyId = CompanyCodeUtil.normalize(company.getId());
+        String companyId = CodeUtil.normalize(company.getId());
         if (companyRepository.existsById(companyId)) {
             throw new IllegalArgumentException("이미 존재하는 회사 코드입니다.");
         }

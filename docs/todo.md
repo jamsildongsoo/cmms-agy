@@ -14,17 +14,16 @@
 - **조치**: `SequenceGeneratorRepository`에 `@Lock(LockModeType.PESSIMISTIC_WRITE)` + JPQL 쿼리 추가, `SequenceService`에서 `synchronized` 제거 후 락 쿼리 사용으로 교체
 - **참고**: `InventoryStatusRepository.findByIdWithLock()` 패턴 동일 적용
 
-### [ ] C4. 예약 공통코드 신규 테넌트 미배포 — 드롭다운 빈값
+### [x] C4. 예약 공통코드 신규 테넌트 미배포 — 해결 (컴파일 검증, 런타임 보류)
+- 회사 생성 시 `CompanyService.copySystemCommonCodes`로 SYSTEM 공통코드(CodeGroup+CodeItem)를 신규 회사로 복사. (가입(signup)은 회사 생성 안 함 → 회사 생성은 sysadmin 전용 경로에서 복사됨)
 
-- **파일**: `backend/src/main/java/com/cmms/service/AuthService.java` — `setupNewCompany()`
-- **현상**: 신규 회사 가입 시 회사·부서·권한그룹만 생성. `SYSTEM` 테넌트의 `EQ_TYPE`, `ITEM_TYPE`, `WO_TYPE`, `WP_TYPE`, `PM_TYPE` 공통코드가 복사되지 않음 → 설비타입·작업허가유형 등 드롭다운 전부 빈값 → 설비/허가 등록 불가
-- **조치**: `setupNewCompany()` 내 SYSTEM 공통코드(CodeGroup + CodeItem) 복사 로직 추가
+### [x] M1. 신규 회사 첫 가입자 데드엔드 — 온보딩 모델로 해소 (컴파일 검증, 런타임 보류)
+- 첫 사용자 자동 ADMIN/Y 방식은 **롤백**. 대신: 회사 생성=sysadmin 전용 / 가입=참여 전용(useYn='N') / **활성화=sysadmin이 SYSTEM 콘솔(`PUT /api/system/users/{c}/{u}/use-yn`)에서** 처리. → 데드엔드 해소.
 
-### [ ] M1. 신규 회사 최초 가입자 로그인 불가 (데드엔드)
-
-- **파일**: `backend/src/main/java/com/cmms/service/AuthService.java` — `signUp()`
-- **현상**: 신규 회사 여부와 무관하게 모든 가입자를 `useYn="N"` + `roleId="USER"`로 저장. 신규 회사를 만든 첫 사용자도 미승인 상태가 되며 승인해줄 관리자가 없어 영구 잠금
-- **조치**: `signUp()` 내 신규 회사 분기 추가 — 첫 사용자는 `useYn="Y"` + `roleId="ADMIN"` 처리
+### [x] [추가] 코드 ID 정규화 + SYSTEM 콘솔 (컴파일/빌드 검증, 런타임 보류)
+- `CodeUtil`(대문자+`[A-Z0-9_-]`) — company/role/dept/plant/warehouse/codeGroup/codeItem 쓰기 지점 적용. userId 제외. 롤ID 케이스 불일치 권한 버그 해소.
+- `SystemAdminController/Service`(`/api/system`, SYSTEM 전용, 교차 테넌트) + FE `SystemAdmin.tsx`(사용자/로그인이력) + Sidebar SYSTEM 메뉴.
+- 가입 참여 전용(self 회사생성 제거), 회사코드 정규화. V5(sysadmin 롤 대문자).
 
 ---
 
