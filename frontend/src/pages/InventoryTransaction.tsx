@@ -267,7 +267,15 @@ export default function InventoryTransaction() {
             <Download size={14} />
             CSV 내보내기
           </button>
-          
+
+          <button
+            onClick={() => window.print()}
+            className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Printer size={14} />
+            가로 목록 인쇄
+          </button>
+
           <button
             onClick={() => setIsClosingModalOpen(true)}
             className="bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800 rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -317,7 +325,7 @@ export default function InventoryTransaction() {
       )}
 
       {/* Main Grid View */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 print:border-0 print:bg-transparent print:p-0">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 print:border-0 print:bg-transparent print:p-0 print-landscape ${isSlipOpen ? 'print:hidden' : ''}`}>
         
         {/* Print Only Header */}
         <div className="hidden print:block text-center mb-8 border-b-2 border-slate-800 pb-4">
@@ -327,7 +335,7 @@ export default function InventoryTransaction() {
           <div className="flex justify-between text-[10px] text-slate-600 mt-2 font-mono">
             <span>회사명: {user?.companyId}</span>
             <span>출력자: {user?.name}</span>
-            <span>출력일시: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+            <span>출력일시: {new Date().toLocaleString('ko-KR')}</span>
           </div>
         </div>
 

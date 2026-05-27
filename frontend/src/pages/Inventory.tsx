@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axios';
-import { 
-  Package, Plus, Edit2, Trash2, Printer, Save, X, FileSpreadsheet 
+import PrintHeader from '../components/PrintHeader';
+import {
+  Package, Plus, Edit2, Trash2, Printer, Save, X, FileSpreadsheet
 } from 'lucide-react';
 
 interface InventoryType {
@@ -154,7 +155,8 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print-area print-landscape">
+      <PrintHeader title="재고 마스터 목록" />
       {/* Header and top actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div>

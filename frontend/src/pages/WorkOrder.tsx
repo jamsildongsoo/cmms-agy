@@ -325,7 +325,15 @@ export default function WorkOrder() {
             <Download size={14} />
             CSV 내보내기
           </button>
-          
+
+          <button
+            onClick={() => window.print()}
+            className="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Printer size={14} />
+            가로 목록 인쇄
+          </button>
+
           <button
             onClick={handleOpenCreate}
             className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors border-0 cursor-pointer shadow-lg shadow-blue-900/20"
@@ -367,7 +375,7 @@ export default function WorkOrder() {
       )}
 
       {/* Main Grid View */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 print:border-0 print:bg-transparent print:p-0">
+      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-6 print:border-0 print:bg-transparent print:p-0 print-landscape ${isFormOpen ? 'print:hidden' : ''}`}>
         
         {/* Print Only Header */}
         <div className="hidden print:block text-center mb-8 border-b-2 border-slate-800 pb-4">
@@ -375,7 +383,7 @@ export default function WorkOrder() {
           <div className="flex justify-between text-[10px] text-slate-600 mt-2 font-mono">
             <span>회사명: {user?.companyId}</span>
             <span>출력자: {user?.name}</span>
-            <span>출력일시: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+            <span>출력일시: {new Date().toLocaleString('ko-KR')}</span>
           </div>
         </div>
 

@@ -333,7 +333,7 @@ export default function Approval() {
                 <div className="flex justify-between text-[9px] text-slate-500 font-mono mt-3">
                   <span>품의번호: {selectedApproval.id}</span>
                   <span>상신자: {usersList.find(u => u.id === selectedApproval.drafterId)?.name || selectedApproval.drafterId}</span>
-                  <span>인쇄시간: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+                  <span>인쇄시간: {new Date().toLocaleString('ko-KR')}</span>
                 </div>
               </div>
 

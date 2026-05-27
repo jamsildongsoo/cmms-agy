@@ -52,33 +52,47 @@
     - 비고: null 가드는 추가 수정 불필요로 검토 종결(리스트 state `[]` 초기화, 상세 블록 조건부 렌더로 이미 안전)
 
 
-- [ ] **8단계: 출력(인쇄) 양식 전체 점검 및 통일화 (Print Layout Review)**
-    > 기준: 설비마스터 출력 양식 (가로 출력, 브라우저 헤더 제거, 커스텀 타이틀/메타 헤더)
-    - [ ] **공통 점검 기준 (모든 출력물 공통)**
-        - [ ] 브라우저 기본 머리글/바닥글(날짜, URL 등) 제거
-        - [ ] 인쇄 전용 타이틀 헤더 (문서명, 회사명, 출력자, 출력일시) 표시
-        - [ ] 빈 페이지 생성 방지
-    - [ ] **가로(Landscape) 출력 대상 - 목록(List)**
-        - [x] 설비마스터 목록 (Equipment.tsx)
-        - [ ] 예방점검 이력 목록 (PreventiveMaintenance.tsx)
-        - [ ] 작업지시 목록 (WorkOrder.tsx)
-        - [ ] 재고 수불 대장 목록 (InventoryTransaction.tsx)
-    - [ ] **세로(Portrait) 출력 대상 - 문서 양식**
-        - [ ] 예방점검 보고서 (PreventiveMaintenance.tsx) - A4 세로
-        - [ ] 작업지시서 (WorkOrder.tsx) - A4 세로
-        - [ ] 작업허가 체크시트 (WorkPermit.tsx) - A4 세로 (유형별 페이지 구분)
-        - [ ] 입출고 전표 (InventoryTransaction.tsx) - A4 세로
-        - [ ] 전자결재 문서 (Approval.tsx) - A4 세로 (결재박스 포함)
+- [x] **8단계: 출력(인쇄) 양식 전체 점검 및 통일화 (Print Layout Review)** — 코드 완료(브라우저 시각 검증 대기)
+    > 방식: named page(Edge/Chrome). 중앙 정책 `index.css`(`@page portrait/landscape` size+12mm margin, `.print-landscape`/`.print-portrait`, UI 숨김·빈페이지 방지) + 공통 `<PrintHeader/>`(목록용 타이틀/회사/출력자/출력일시, 날짜형식 `toLocaleString('ko-KR')` 단일화).
+    > 문서형은 인라인 `@page`가 없어 기본 세로로 인쇄됨 → 중앙 margin만 통일(개별 레이아웃 유지). 목록+문서가 한 페이지에 공존하는 PM/WO/InventoryTx는 목록 컨테이너에 `print-landscape` + 문서 모달/슬립 열림 시 `print:hidden`으로 격리.
+    - [x] **공통 점검 기준 (모든 출력물 공통)**
+        - [x] 브라우저 기본 머리글/바닥글 — `@page margin` 통일 + 인쇄 대화상자에서 해제(최대 억제)
+        - [x] 인쇄 전용 타이틀 헤더 (문서명, 회사명, 출력자, 출력일시) — 목록 `<PrintHeader/>`, 문서 기존 서식 헤더(출력일시 형식 통일)
+        - [x] 빈 페이지 생성 방지 — `@media print` 높이/오버플로 제약 해제
+    - [x] **가로(Landscape) 출력 대상 - 목록(List)** — 루트/목록 컨테이너에 `.print-landscape`
+        - [x] 설비마스터 목록 (Equipment.tsx) — 기준 템플릿
+        - [x] 재고마스터 목록 (Inventory.tsx)
+        - [x] 예방점검 이력 목록 (PreventiveMaintenance.tsx) — history 탭 `가로 목록 인쇄` 버튼 추가
+        - [x] 작업지시 목록 (WorkOrder.tsx) — `가로 목록 인쇄` 버튼 추가
+        - [x] 재고 수불 대장 목록 (InventoryTransaction.tsx) — `가로 목록 인쇄` 버튼 추가
+    - [x] **세로(Portrait) 출력 대상 - 문서 양식** — 기본 portrait + 중앙 12mm margin (개별 서식 헤더 유지)
+        - [x] 예방점검 보고서 (PreventiveMaintenance.tsx)
+        - [x] 작업지시서 (WorkOrder.tsx)
+        - [x] 작업허가 체크시트 (WorkPermit.tsx)
+        - [x] 입출고 전표 (InventoryTransaction.tsx)
+        - [x] 전자결재 문서 (Approval.tsx)
 
-- [ ] **9단계: 파일 첨부 기능 구현 (File Attachment)**
-    > 준비된 DB 스키마(file_attachment, file_attachment_item) 및 API 연동
-    - [ ] **백엔드**
-        - [ ] FileAttachment, FileAttachmentItem 엔티티 생성
-        - [ ] 파일 업로드 / 다운로드 / 삭제 API 개발 및 Supabase Storage(S3 SDK) 연계
-        - [ ] 결재(Approval) 및 게시판(Board) 저장 시 파일그룹ID(file_group_id) 연동
-    - [ ] **프론트엔드**
-        - [ ] 드래그&드롭 파일 업로드용 공통 첨부 컴포넌트 개발
-        - [ ] 결재(Approval.tsx) 및 게시글(Board.tsx)에 파일 첨부 UI 연동
+- [ ] **9단계: 파일 첨부 기능 구현 (File Attachment)** — 확정 계획
+    > 기반: DB 스키마(`file_attachment`/`file_attachment_item`, 도메인 6테이블 `file_group_id`) + `application.yml` `cloud.aws.*`(STORAGE_* env) + multipart(20MB/100MB) 준비됨. AWS SDK·코드만 신규.
+    >
+    > **확정 결정**: 업로드·다운로드 **백엔드 경유**(presigned 미사용) / **AWS SDK v2**(`software.amazon.awssdk:s3`, endpoint override + path-style) / 삭제 시 **메타 soft-delete(동기, 트랜잭션 내) + S3 객체 제거(@Async, 커밋 후, 실패 로깅·재시도)** + 고아 정리(reconciliation) 안전망.
+
+    - [ ] **P0. 의존성·설정**
+        - [ ] `build.gradle.kts`에 AWS SDK v2 s3 추가
+        - [ ] `StorageProperties`(@ConfigurationProperties `cloud.aws`) + `S3Client` 빈(STORAGE_ENDPOINT/REGION/KEY/SECRET, path-style) — 죽은 설정을 실제 바인딩으로 전환
+        - [ ] `@EnableAsync` + 전용 Executor 빈 (S3 삭제 비동기용)
+    - [ ] **P1. 백엔드 코어**
+        - [ ] 엔티티 `FileAttachment(+Id)`, `FileAttachmentItem(+Id)` + 리포지토리
+        - [ ] `FileStorageService`: 업로드(크기/ MIME 화이트리스트(STORAGE_ALLOWED_MIMES)/확장자 검증, `stored=UUID+ext`, `storage_path={companyId}/{refModule}/{groupNo}/{stored}`, SHA-256, S3 putObject, 메타 저장 / 메타 실패 시 방금 put한 객체 보상 삭제) / 다운로드(**백엔드 스트리밍**, Content-Disposition, mime) / 삭제(메타 soft-delete 동기 → **커밋 후 `@Async`로 S3 deleteObject**, 실패 로깅·재시도)
+        - [ ] `FileController`(`/api/files`, 인증): `POST ?refModule=`(multipart→fileGroupId), `GET /{groupNo}`(목록), `GET /{groupNo}/{itemNo}/download`, `DELETE /{groupNo}/{itemNo}`
+        - [ ] 테넌트 격리: 모든 접근에 `companyId == principal` 검증(S3 key 접두사 companyId)
+    - [ ] **P2. 도메인 연동(file_group_id)**
+        - [ ] 게시판/결재 저장 시 `file_group_id` 세팅, 상세 조회 시 첨부 목록 로드
+    - [ ] **P3. 프론트엔드**
+        - [ ] 공통 `FileUpload.tsx`(드래그&드롭·다중·진행률·목록/삭제) — 업로드 후 fileGroupId를 폼에 보관
+        - [ ] 결재(Approval.tsx)·게시글(Board.tsx) 첨부 UI + 다운로드 연동
+    - [ ] **P4(선택/후속)**: 설비/PM/WO/WP 확대 + **고아 객체 정리(reconciliation) 작업**(soft-delete됐으나 S3 삭제 실패분, 업로드 중단 고아 주기 정리)
+    - **보안 체크**: 테넌트 격리, MIME/확장자/크기 검증, stored UUID·경로 traversal 차단, (선택) 매직넘버 검사. 첨부 권한은 우선 인증만(후속: 대상 모듈 권한 연계).
 
 - [ ] **[보류/보안] CORS 설정 강화** (검토 완료, 현재 변경 보류)
     > `SecurityConfig`: `setAllowedOriginPatterns("*")` + `setAllowCredentials(true)` — 임의 오리진의 자격증명 동반 요청을 허용하는 오설정(Spring이 Origin을 반사 + credentials 허용).

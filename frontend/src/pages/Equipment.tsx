@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axios';
-import { useAuthStore } from '../store/useAuthStore';
+import PrintHeader from '../components/PrintHeader';
 import { 
   Wrench, Plus, Edit2, Trash2, Printer, Save, X, PlusCircle, MinusCircle, FileSpreadsheet, RefreshCw 
 } from 'lucide-react';
@@ -41,7 +41,6 @@ interface CheckCycle {
 }
 
 export default function Equipment() {
-  const { user } = useAuthStore();
   const [equipments, setEquipments] = useState<EquipmentType[]>([]);
   const [plants, setPlants] = useState<{ id: string; name: string }[]>([]);
   const [selectedPlantId, setSelectedPlantId] = useState('');
@@ -270,36 +269,8 @@ export default function Equipment() {
     : equipments;
 
   return (
-    <div className="space-y-6">
-      {/* 인쇄 전용 헤더 및 가로출력 강제 스타일 */}
-      <div className="hidden print:block mb-6">
-        <style>{`
-          @media print {
-            @page { size: landscape; margin: 0; }
-            html, body, #root, main, div { 
-              height: auto !important; 
-              overflow: visible !important;
-              min-height: 0 !important;
-              max-height: none !important;
-            }
-            body { 
-              background-color: white !important; 
-              color: black !important; 
-              padding: 15mm 15mm 15mm 15mm !important;
-            }
-          }
-        `}</style>
-        <div className="flex justify-between items-end border-b-2 border-slate-800 pb-3 text-slate-800">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">설비 마스터 목록</h2>
-          </div>
-          <div className="text-right text-[10px] space-y-1 text-slate-600 font-semibold">
-            <div>회사명: <span className="text-slate-900 font-bold">{user?.companyId || 'CMMS'}</span></div>
-            <div>출력자: <span className="text-slate-900 font-bold">{user?.name || '관리자'}</span></div>
-            <div>출력일시: <span className="text-slate-900 font-bold">{new Date().toLocaleString('ko-KR')}</span></div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6 print-area print-landscape">
+      <PrintHeader title="설비 마스터 목록" />
 
       {/* Header and top buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">

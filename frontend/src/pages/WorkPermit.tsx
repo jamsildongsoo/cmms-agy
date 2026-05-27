@@ -489,7 +489,7 @@ export default function WorkPermit() {
           <div className="flex justify-between text-[10px] text-slate-600 mt-2 font-mono">
             <span>회사명: {user?.companyId}</span>
             <span>출력자: {user?.name}</span>
-            <span>출력일시: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+            <span>출력일시: {new Date().toLocaleString('ko-KR')}</span>
           </div>
         </div>
 
@@ -589,7 +589,7 @@ export default function WorkPermit() {
                   <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-3 text-left">
                     <span>허가서번호: {wpNo || '임시발행'}</span>
                     <span>안전감독: {usersList.find(u => u.id === supervisorId)?.name || supervisorId}</span>
-                    <span>인쇄일시: {new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+                    <span>인쇄일시: {new Date().toLocaleString('ko-KR')}</span>
                   </div>
                 </div>
 

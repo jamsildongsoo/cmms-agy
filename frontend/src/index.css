@@ -45,13 +45,22 @@ html.light {
   min-height: 44px;
 }
 
-/* 인쇄용 @media print 정책 강제 정의 */
+/* ==========================================================================
+   인쇄 공통 정책 (8단계 통일) — named page 방식 (Edge/Chrome)
+   - 목록(가로): 출력 영역에 .print-landscape + 공통 <PrintHeader/> 부착
+   - 문서(세로): 기본값이 portrait이므로 별도 클래스 불필요(필요 시 .print-portrait)
+   - 여백: @page margin 12mm 통일. 브라우저 머리글/바닥글은 인쇄 대화상자에서 해제(최대 억제).
+   ========================================================================== */
+@page { size: A4; margin: 12mm; }
+@page portrait { size: A4 portrait; margin: 12mm; }
+@page landscape { size: A4 landscape; margin: 12mm; }
+
 @media print {
   body {
     background-color: white !important;
     color: black !important;
   }
-  
+
   /* 인쇄 시 비노출 대상 */
   .no-print,
   nav,
@@ -62,6 +71,18 @@ html.light {
   .actions {
     display: none !important;
   }
+
+  /* 빈 페이지 방지 — 높이/오버플로 제약 해제 */
+  html, body, #root, main, div {
+    height: auto !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  /* 출력 방향 (named page) — 목록은 landscape, 문서는 기본 portrait */
+  .print-portrait { page: portrait; }
+  .print-landscape { page: landscape; }
 
   /* 강제 페이지 줄바꿈 및 테두리 고대비화 */
   .print-page-break {
