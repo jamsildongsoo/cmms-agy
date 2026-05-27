@@ -257,7 +257,7 @@ CREATE TABLE approval_step (
     step_no INT,
     approver_id VARCHAR(50) NOT NULL,
     approval_type CHAR(1) NOT NULL,
-    approval_result CHAR(1) NOT NULL,
+    approval_result CHAR(1), -- 빈칸(대기)/Y(승인)/N(반려) — 정본: docs/db_specification.md §5.3
     action_at TIMESTAMP,
     comments TEXT,
     PRIMARY KEY (company_id, approval_id, step_no),

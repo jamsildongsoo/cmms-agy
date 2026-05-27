@@ -1,0 +1,12 @@
+# 운영 오버레이 (SPRING_PROFILES_ACTIVE=prod, 기본). SQL 로깅 비활성·로그 INFO. 비밀/접속정보는 .env(env)로만.
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    com.cmms: INFO
+    org.hibernate.SQL: WARN

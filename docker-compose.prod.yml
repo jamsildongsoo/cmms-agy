@@ -1,0 +1,28 @@
+# 운영(및 운영-동등 로컬검증): 앱을 이미지로 빌드/실행. DB·Object Storage는 외부(Supabase).
+# .env(접속/비밀)는 env_file로 주입 — 이미지엔 굽지 않음. 운영 이관 시 .env의 creds만 교체.
+#   docker compose -f docker-compose.prod.yml up -d --build   → http://localhost (80)
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: cmms-api:latest
+    container_name: cmms-api
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    expose:
+      - "8080"          # 외부 노출 없이 web(nginx)만 접근
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .              # 루트 컨텍스트(프론트 + docker/nginx/prod.conf)
+      dockerfile: frontend/Dockerfile
+    image: cmms-web:latest
+    container_name: cmms-web
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped

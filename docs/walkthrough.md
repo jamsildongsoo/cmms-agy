@@ -153,3 +153,43 @@
 - **결재자(결재/합의) 없이 상신 시 → 임시저장(`TEMP`)**(라우팅·연계모듈 결재중 처리 안 함). 상신함(`getSentApprovals`)은 상태 무관 반환이라 임시저장도 조회됨.
 - **재상신**: `submitApproval`이 기존 문서 id를 받으면(임시저장 상태에 한해) 단계 제거 후 재생성하여 다시 상신. 결재자가 추가되면 `IN_PROGRESS`로 라우팅.
 - 검증: 컴파일 통과. **결재 워크플로 동작 변경분은 런타임 테스트 추후 진행 예정**(다단계 진행/반려 후 비노출/완결 전파/V4 데이터 변환).
+
+---
+
+## 8단계: 출력(인쇄) 양식 통일 (Frontend)
+
+named page 방식(Edge/Chrome 기준)으로 인쇄 정책을 중앙화. 기준 템플릿은 설비마스터.
+- **중앙 CSS**(`index.css`): `@page portrait/landscape`(A4 size + **margin 12mm 통일**), `.print-landscape`/`.print-portrait`, `@media print`에서 UI 숨김(nav/aside/button 등)·높이/오버플로 제약 해제(빈 페이지 방지). 문서형은 인라인 `@page`가 없어 기본 portrait → 중앙 margin만 통일(개별 서식 유지).
+- **공통 헤더** `PrintHeader.tsx`: 목록용 타이틀/회사/출력자/출력일시. 출력일시 형식 `toLocaleString('ko-KR')`로 **전 문서 통일**(기존 `toISOString` 제각각 → 일원화).
+- **목록 가로**: 설비·재고(루트 `.print-landscape`), 작업지시·예방점검 이력·재고 수불대장(목록 컨테이너에 `.print-landscape` + `가로 목록 인쇄` 버튼). 목록+문서 모달이 공존하는 PM/WO/InventoryTx는 **문서 모달/슬립 열림 시 목록을 `print:hidden`으로 격리**하여 방향 충돌 방지.
+- **문서 세로**: 작업지시서·예방점검 보고서·작업허가서·입출고 전표·전자결재(기본 portrait + 12mm).
+- 검증: 프론트 빌드(타입체크) 통과. **브라우저 인쇄 미리보기 시각 검증은 추후**(머리글/바닥글은 인쇄 대화상자에서 해제).
+
+---
+
+## 9단계: 파일 첨부 (Object Storage, BE+FE)
+
+S3 호환 스토리지(Supabase) 기반 첨부. **1차 범위: 게시판·결재만**(설비/PM/WO/WP 제외). 업로드·다운로드는 **백엔드 경유**.
+
+### P0. 의존성·설정
+- AWS SDK v2 `s3`(BOM 2.28.16). `StorageProperties`(record, `@ConfigurationProperties("cloud.aws")`, `region.static`는 `@Name` 매핑) — 죽은 설정을 실제 바인딩으로 전환.
+- `StorageConfig`의 `S3Client` 빈: **endpoint override + path-style**(S3 호환). `AsyncConfig`: `@EnableAsync`(s3 삭제용 `s3TaskExecutor`) + `@EnableScheduling`(P4용).
+
+### P1. 백엔드 코어 (`com.cmms`)
+- 엔티티: `FileAttachment`(`(company_id, group_no)` 복합키, `group_no` IDENTITY, `BaseEntity` 상속=감사/소프트삭제) + `FileAttachmentItem`(`(company_id, group_no, item_no)`, **감사/`delete_yn` 없음 → 단건 물리삭제**). `item_no`는 그룹 내 `max+1` 채번.
+- `FileStorageService`: 업로드(빈파일/**MIME 화이트리스트**(`STORAGE_ALLOWED_MIMES`, 와일드카드 `image/*` 지원) 검증, `stored=UUID+ext`, `storage_path={companyId}/{refModule}/{groupNo}/{stored}`, SHA-256, S3 putObject → 메타 저장 / **예외 시 put된 객체 보상 삭제**) / 다운로드(**S3 스트림 → InputStreamResource**, Content-Disposition UTF-8) / 삭제(메타 물리삭제 동기 → **afterCommit `@Async` S3 deleteObject**, `S3Cleaner` 실패 로깅).
+- `FileController`(`/api/files`, 인증): `POST`(multipart, refModule/refNo/groupNo → `UploadResponse`), `GET /{groupNo}`(목록), `GET /{groupNo}/{itemNo}/download`, `DELETE /{groupNo}/{itemNo}`.
+- **테넌트 격리**: 조회/다운로드/삭제 모두 복합키에 `companyId` 포함(타 테넌트 → not found), S3 key 접두사 `companyId`. 파일명 traversal 차단(`baseName`), 응답에 `storage_path`/checksum 미노출.
+
+### P2. 도메인 연동 (게시판·결재)
+백엔드 **무변경** — `Board.fileGroupId`(엔티티 컬럼, `@RequestBody Board` 저장)와 `Approval.fileGroupId`(`ApprovalSubmitRequest.approval` 엔티티째 저장)가 **기존 라운드트립으로 충족**. 상세 응답도 엔티티째 반환하여 노출.
+
+### P3. 프론트엔드
+- 공통 `FileUpload.tsx`: 드래그&드롭·다중·진행률·목록/다운로드/삭제. 첫 업로드로 그룹 생성 시 `onGroupNoChange`로 상위 폼에 `fileGroupId` 전달. 다운로드는 인증 헤더 필요 → **axios `responseType:'blob'` → ObjectURL**. `readOnly` 모드(상세조회).
+- 결재(`Approval.tsx` 상신/상세, `refModule=APR`)·게시판(`Board.tsx` 작성/상세, `refModule=BOARD`) 연동. 결재 인쇄 문서엔 첨부 `print:hidden`.
+
+### P4. 고아 객체 정리(reconciliation)
+`FileReconciliationService`(`@Scheduled` cron): 버킷을 스캔해 **메타 없는 S3 객체를 유예시간 경과 후 제거**(삭제 시 @Async 실패분·업로드 중단 잔여물 청소). **기본 비활성**(`cloud.aws.reconcile-enabled=false`), cron·유예시간 설정화. 설비/PM/WO/WP 확대는 범위 제외.
+
+### 검증
+백엔드 **컴파일** + 프론트 **빌드** 통과. **런타임(실 Supabase Storage) 검증은 추후** — `STORAGE_*` 환경변수·버킷 준비 후 업로드/다운로드/삭제 전체 플로우 + (활성화 시) reconciliation 확인 필요.

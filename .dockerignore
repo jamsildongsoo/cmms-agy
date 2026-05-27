@@ -1,0 +1,10 @@
+# 이미지 컨텍스트에서 제외 (비밀·빌드산출물·VCS)
+.git
+.env
+**/.env
+**/node_modules
+**/dist
+**/build
+**/.gradle
+docs
+*.md

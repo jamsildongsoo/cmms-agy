@@ -6,14 +6,14 @@
 INSERT INTO company (id, name, business_number, email, created_by, updated_by)
 VALUES ('SYSTEM', '시스템 관리본부', '000-00-00000', 'system@cmms.com', 'SYSTEM', 'SYSTEM');
 
--- 시스템 관리용 권한 그룹 생성
+-- 시스템 관리용 권한 그룹 생성 (롤 ID는 대문자 코드 규칙에 따라 'SYSTEM')
 INSERT INTO role (company_id, id, role_name, multi_plant, created_by, updated_by)
-VALUES ('SYSTEM', 'system', '시스템 총괄 관리자', 'Y', 'SYSTEM', 'SYSTEM');
+VALUES ('SYSTEM', 'SYSTEM', '시스템 총괄 관리자', 'Y', 'SYSTEM', 'SYSTEM');
 
 -- 시스템 관리자 계정 생성 (비밀번호: admin123)
 -- BCrypt 해시: $2a$10$yMi2v4Fp11hL6y033d50AeXo3.Z.7v1.oX4uB4Hl/8rYQoFh2y0fC
 INSERT INTO users (company_id, id, name, password_hash, role_id, use_yn, created_by, updated_by)
-VALUES ('SYSTEM', 'sysadmin', '시스템관리자', '$2a$10$yMi2v4Fp11hL6y033d50AeXo3.Z.7v1.oX4uB4Hl/8rYQoFh2y0fC', 'system', 'Y', 'SYSTEM', 'SYSTEM');
+VALUES ('SYSTEM', 'sysadmin', '시스템관리자', '$2a$10$yMi2v4Fp11hL6y033d50AeXo3.Z.7v1.oX4uB4Hl/8rYQoFh2y0fC', 'SYSTEM', 'Y', 'SYSTEM', 'SYSTEM');
 
 
 -- ==========================================
