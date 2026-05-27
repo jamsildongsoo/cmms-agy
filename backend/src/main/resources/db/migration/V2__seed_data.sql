@@ -11,9 +11,9 @@ INSERT INTO role (company_id, id, role_name, multi_plant, created_by, updated_by
 VALUES ('SYSTEM', 'SYSTEM', '시스템 총괄 관리자', 'Y', 'SYSTEM', 'SYSTEM');
 
 -- 시스템 관리자 계정 생성 (비밀번호: admin123)
--- BCrypt 해시: $2a$10$yMi2v4Fp11hL6y033d50AeXo3.Z.7v1.oX4uB4Hl/8rYQoFh2y0fC
+-- BCrypt 해시: $2b$10$Gntmi.xoNxCZrVzkt6DIxe9o/lz8elMM64j0f/OVr1tZzIMVI0ft2
 INSERT INTO users (company_id, id, name, password_hash, role_id, use_yn, created_by, updated_by)
-VALUES ('SYSTEM', 'sysadmin', '시스템관리자', '$2a$10$yMi2v4Fp11hL6y033d50AeXo3.Z.7v1.oX4uB4Hl/8rYQoFh2y0fC', 'SYSTEM', 'Y', 'SYSTEM', 'SYSTEM');
+VALUES ('SYSTEM', 'sysadmin', '시스템관리자', '$2b$10$Gntmi.xoNxCZrVzkt6DIxe9o/lz8elMM64j0f/OVr1tZzIMVI0ft2', 'SYSTEM', 'Y', 'SYSTEM', 'SYSTEM');
 
 
 -- ==========================================
