@@ -75,18 +75,22 @@
 - [ ] **9단계: 파일 첨부 기능 구현 (File Attachment)** — 확정 계획
     > 기반: DB 스키마(`file_attachment`/`file_attachment_item`, 도메인 6테이블 `file_group_id`) + `application.yml` `cloud.aws.*`(STORAGE_* env) + multipart(20MB/100MB) 준비됨. AWS SDK·코드만 신규.
     >
-    > **확정 결정**: 업로드·다운로드 **백엔드 경유**(presigned 미사용) / **AWS SDK v2**(`software.amazon.awssdk:s3`, endpoint override + path-style) / 삭제 시 **메타 soft-delete(동기, 트랜잭션 내) + S3 객체 제거(@Async, 커밋 후, 실패 로깅·재시도)** + 고아 정리(reconciliation) 안전망.
+    > **확정 결정**: 업로드·다운로드 **백엔드 경유**(presigned 미사용) / **AWS SDK v2**(`software.amazon.awssdk:s3`, endpoint override + path-style) / 삭제 시 **메타 삭제(동기, 트랜잭션 내) + S3 객체 제거(@Async, 커밋 후, 실패 로깅·재시도)** + 고아 정리(reconciliation) 안전망.
+    >
+    > **1차 범위(확정)**: P2 연동은 **게시판·결재만**(설비/PM/WO/WP는 P4 후속). **코드만 구현, 런타임(실 Supabase Storage) 검증은 추후**(컴파일/빌드까지).
+    >
+    > **스키마 확인 보정**: `file_attachment_item`엔 `delete_yn`·감사필드 없음 → **그룹(`file_attachment`)만 `BaseEntity` 상속(soft-delete+감사)**, **아이템 단건 삭제는 물리 삭제** 후 @Async S3 제거. `item_no`는 시퀀스 없음 → 그룹 내 `max(item_no)+1` 채번. `group_no`는 `BIGSERIAL`(DB 자동, insert 후 반환값 사용).
 
-    - [ ] **P0. 의존성·설정**
-        - [ ] `build.gradle.kts`에 AWS SDK v2 s3 추가
-        - [ ] `StorageProperties`(@ConfigurationProperties `cloud.aws`) + `S3Client` 빈(STORAGE_ENDPOINT/REGION/KEY/SECRET, path-style) — 죽은 설정을 실제 바인딩으로 전환
-        - [ ] `@EnableAsync` + 전용 Executor 빈 (S3 삭제 비동기용)
-    - [ ] **P1. 백엔드 코어**
-        - [ ] 엔티티 `FileAttachment(+Id)`, `FileAttachmentItem(+Id)` + 리포지토리
-        - [ ] `FileStorageService`: 업로드(크기/ MIME 화이트리스트(STORAGE_ALLOWED_MIMES)/확장자 검증, `stored=UUID+ext`, `storage_path={companyId}/{refModule}/{groupNo}/{stored}`, SHA-256, S3 putObject, 메타 저장 / 메타 실패 시 방금 put한 객체 보상 삭제) / 다운로드(**백엔드 스트리밍**, Content-Disposition, mime) / 삭제(메타 soft-delete 동기 → **커밋 후 `@Async`로 S3 deleteObject**, 실패 로깅·재시도)
-        - [ ] `FileController`(`/api/files`, 인증): `POST ?refModule=`(multipart→fileGroupId), `GET /{groupNo}`(목록), `GET /{groupNo}/{itemNo}/download`, `DELETE /{groupNo}/{itemNo}`
-        - [ ] 테넌트 격리: 모든 접근에 `companyId == principal` 검증(S3 key 접두사 companyId)
-    - [ ] **P2. 도메인 연동(file_group_id)**
+    - [x] **P0. 의존성·설정** — 컴파일 검증 완료
+        - [x] `build.gradle.kts`에 AWS SDK v2 s3 추가 (BOM 2.28.16)
+        - [x] `StorageProperties`(record, @ConfigurationProperties `cloud.aws`, region.static는 @Name 매핑) + `StorageConfig`의 `S3Client` 빈(endpoint override + path-style)
+        - [x] `AsyncConfig`: `@EnableAsync` + `s3TaskExecutor` 빈 (S3 삭제 비동기용)
+    - [x] **P1. 백엔드 코어** — 컴파일 검증 완료
+        - [x] 엔티티 `FileAttachment(+Id, BaseEntity)`, `FileAttachmentItem(+Id, 비감사)` + 리포지토리(`findMaxItemNo`, `findByCompanyIdAndGroupNoOrderByItemNoAsc`)
+        - [x] `FileStorageService`: 업로드(빈파일/MIME 화이트리스트(와일드카드 `image/*` 지원) 검증, `stored=UUID+ext`, `storage_path={companyId}/{refModule}/{groupNo}/{stored}`, SHA-256, S3 putObject, 메타 저장 / 예외 시 put된 객체 보상 삭제) / 다운로드(**S3 스트림→InputStreamResource**, Content-Disposition UTF-8, mime) / 삭제(메타 물리삭제 동기 → **afterCommit `@Async` S3 deleteObject**, `S3Cleaner` 실패 로깅)
+        - [x] `FileController`(`/api/files`, 인증): `POST`(multipart, refModule/refNo/groupNo→UploadResponse), `GET /{groupNo}`(목록), `GET /{groupNo}/{itemNo}/download`, `DELETE /{groupNo}/{itemNo}`
+        - [x] 테넌트 격리: 조회/다운로드/삭제 모두 복합키에 `companyId` 포함(타 테넌트 조회 시 not found), S3 key 접두사 `companyId`. 파일명 traversal 차단(baseName), 응답에 storage_path/checksum 미노출
+    - [ ] **P2. 도메인 연동(file_group_id) — 1차: 게시판·결재만**
         - [ ] 게시판/결재 저장 시 `file_group_id` 세팅, 상세 조회 시 첨부 목록 로드
     - [ ] **P3. 프론트엔드**
         - [ ] 공통 `FileUpload.tsx`(드래그&드롭·다중·진행률·목록/삭제) — 업로드 후 fileGroupId를 폼에 보관
