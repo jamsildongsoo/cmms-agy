@@ -9,8 +9,8 @@ interface Plant { id: string; name: string; }
 interface Department { id: string; name: string; parentId: string | null; }
 interface Role { id: string; roleName: string; multiPlant: string; }
 interface RoleDetail { companyId: string; roleId: string; moduleDetail: string; permC: string; permR: string; permU: string; permD: string; permA: string; }
-interface User { id: string; name: string; departmentId: string | null; roleId: string; email: string | null; phone: string | null; position: string | null; title: string | null; useYn: string; }
-interface WarehouseType { id: string; name: string; }
+interface User { id: string; name: string; departmentId: string | null; roleId: string; email: string | null; phone: string | null; position: string | null; title: string | null; useYn: string; lastLoginPlantId?: string | null; }
+interface WarehouseType { id: string; name: string; plantId?: string | null; }
 interface CodeGroup { id: string; name: string; systemUseYn: string; }
 interface CodeItem { id: string; name: string; legalInspectYn: string; sortOrder: number; }
 
@@ -419,6 +419,7 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
   const [users, setUsers] = useState<User[]>([]);
   const [depts, setDepts] = useState<Department[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [plants, setPlants] = useState<Plant[]>([]);
 
   // User form states
   const [id, setId] = useState('');
@@ -430,18 +431,21 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
   const [position, setPosition] = useState('');
   const [title, setTitle] = useState('');
   const [useYn, setUseYn] = useState('Y');
+  const [lastLoginPlantId, setLastLoginPlantId] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      const [userRes, deptRes, roleRes] = await Promise.all([
+      const [userRes, deptRes, roleRes, plantRes] = await Promise.all([
         axiosInstance.get('/mdm/users'),
         axiosInstance.get('/mdm/departments'),
-        axiosInstance.get('/mdm/roles')
+        axiosInstance.get('/mdm/roles'),
+        axiosInstance.get('/mdm/plants'),
       ]);
       setUsers(userRes.data);
       setDepts(deptRes.data);
       setRoles(roleRes.data);
+      setPlants(plantRes.data || []);
     } catch (err) {
       notify('error', '데이터를 조회하는 도중 오류가 발생했습니다.');
     }
@@ -462,7 +466,8 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
         phone: phone || null,
         position: position || null,
         title: title || null,
-        useYn
+        useYn,
+        lastLoginPlantId: lastLoginPlantId || null,
       };
 
       if (editingId) {
@@ -493,6 +498,7 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
   const resetForm = () => {
     setId(''); setName(''); setDepartmentId(''); setRoleId('USER');
     setEmail(''); setPhone(''); setPosition(''); setTitle(''); setUseYn('Y');
+    setLastLoginPlantId('');
     setEditingId(null);
   };
 
@@ -604,6 +610,17 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
               <option value="N">미사용 (Disabled)</option>
             </select>
           </div>
+          <div>
+            <label className="block text-slate-400 text-xs mb-1.5">지정 플랜트 (선택 — 비우면 로그인 시 자동매핑)</label>
+            <select
+              value={lastLoginPlantId}
+              onChange={(e) => setLastLoginPlantId(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 text-xs outline-none transition-colors"
+            >
+              <option value="">자동매핑</option>
+              {plants.map(p => <option key={p.id} value={p.id}>{p.id} — {p.name}</option>)}
+            </select>
+          </div>
           <div className="md:col-span-4 flex justify-end gap-2 mt-2">
             {editingId && (
               <button
@@ -676,6 +693,7 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
                         setPosition(u.position || '');
                         setTitle(u.title || '');
                         setUseYn(u.useYn);
+                        setLastLoginPlantId(u.lastLoginPlantId || '');
                       }}
                       className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400 transition-colors border-0 cursor-pointer bg-transparent"
                     >
@@ -701,23 +719,24 @@ function UserManager({ notify }: { notify: (type: 'success' | 'error', t: string
 /* =========================================================================
    4. ROLE MATRIX MANAGER
    ========================================================================= */
-const MODULE_NAME_MAP: Record<string, string> = {
-  MDM: '기준정보 설정 (MDM)',
-  EQUIPMENT: '설비 마스터',
-  INVENTORY: '재고 마스터',
-  PM: '예방점검 기록 (PM)',
-  WO: '작업지시서 (WO)',
-  WP: '작업허가서 (WP)',
-  APPROVAL: '전자결재 (Approval)',
-  BOARD: '게시판 (Board)'
-};
-
 function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string) => void }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [details, setDetails] = useState<RoleDetail[]>([]);
   const [newRoleId, setNewRoleId] = useState('');
   const [newRoleName, setNewRoleName] = useState('');
+  const [newMultiPlant, setNewMultiPlant] = useState(false);
+  // 모듈 라벨 — BE /api/meta/modules 단일 소스(AppModule.label())
+  const [moduleLabels, setModuleLabels] = useState<Record<string, string>>({});
+  useEffect(() => {
+    axiosInstance.get('/meta/modules')
+      .then(res => {
+        const map: Record<string, string> = {};
+        (res.data || []).forEach((m: any) => { map[m.code] = m.label; });
+        setModuleLabels(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchRoles = async () => {
     try {
@@ -747,9 +766,9 @@ function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string
     e.preventDefault();
     if (!newRoleId || !newRoleName) return;
     try {
-      await axiosInstance.post('/mdm/roles', { id: newRoleId.toUpperCase(), roleName: newRoleName });
+      await axiosInstance.post('/mdm/roles', { id: newRoleId.toUpperCase(), roleName: newRoleName, multiPlant: newMultiPlant ? 'Y' : 'N' });
       notify('success', '새로운 권한 그룹이 추가되었습니다.');
-      setNewRoleId(''); setNewRoleName('');
+      setNewRoleId(''); setNewRoleName(''); setNewMultiPlant(false);
       fetchRoles();
     } catch (err: any) {
       notify('error', err.response?.data?.message || '권한 생성 실패.');
@@ -812,6 +831,14 @@ function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string
                 className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 text-xs outline-none transition-colors"
               />
             </div>
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={newMultiPlant}
+                onChange={(e) => setNewMultiPlant(e.target.checked)}
+              />
+              멀티 플랜트 권한 (전체 플랜트 조회·전환)
+            </label>
             <button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors cursor-pointer border-0"
@@ -835,7 +862,10 @@ function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string
                     : 'bg-slate-950/40 border-slate-900 text-slate-400 hover:bg-slate-800/40'
                 }`}
               >
-                {r.roleName} ({r.id})
+                <span className="flex items-center justify-between">
+                <span>{r.roleName} ({r.id})</span>
+                {r.multiPlant === 'Y' && <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-950/40 border border-emerald-900/60 text-emerald-400 text-[9px] font-bold">멀티</span>}
+              </span>
               </button>
             ))}
           </div>
@@ -876,7 +906,7 @@ function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string
                 details.map(detail => (
                   <tr key={detail.moduleDetail} className="border-b border-slate-900 hover:bg-slate-900/30 text-slate-300">
                     <td className="p-3.5 font-semibold text-slate-200">
-                      {MODULE_NAME_MAP[detail.moduleDetail] || detail.moduleDetail}
+                      {moduleLabels[detail.moduleDetail] || detail.moduleDetail}
                       <span className="text-[10px] text-slate-500 font-mono ml-2">({detail.moduleDetail})</span>
                     </td>
                     {(['C', 'R', 'U', 'D', 'A'] as const).map(type => {
@@ -914,8 +944,10 @@ function RoleManager({ notify }: { notify: (type: 'success' | 'error', t: string
    ========================================================================= */
 function WarehouseManager({ notify }: { notify: (type: 'success' | 'error', t: string) => void }) {
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
+  const [plants, setPlants] = useState<Plant[]>([]);
   const [id, setId] = useState('');
   const [name, setName] = useState('');
+  const [plantId, setPlantId] = useState('');  // 빈값 = 공통부문(null)
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchWarehouses = async () => {
@@ -926,21 +958,26 @@ function WarehouseManager({ notify }: { notify: (type: 'success' | 'error', t: s
       notify('error', '창고 목록 조회 실패.');
     }
   };
+  const fetchPlants = async () => {
+    try { const res = await axiosInstance.get('/mdm/plants'); setPlants(res.data || []); }
+    catch (err) { /* 비치명 */ }
+  };
 
-  useEffect(() => { fetchWarehouses(); }, []);
+  useEffect(() => { fetchWarehouses(); fetchPlants(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !name) return;
     try {
+      const payload = { id, name, plantId: plantId || null };
       if (editingId) {
-        await axiosInstance.put(`/mdm/warehouses/${editingId}`, { name });
+        await axiosInstance.put(`/mdm/warehouses/${editingId}`, payload);
         notify('success', '창고 정보가 수정되었습니다.');
       } else {
-        await axiosInstance.post('/mdm/warehouses', { id, name });
+        await axiosInstance.post('/mdm/warehouses', payload);
         notify('success', '새로운 창고가 추가되었습니다.');
       }
-      setId(''); setName(''); setEditingId(null);
+      setId(''); setName(''); setPlantId(''); setEditingId(null);
       fetchWarehouses();
     } catch (err: any) {
       notify('error', err.response?.data?.message || '저장 실패.');
@@ -990,6 +1027,17 @@ function WarehouseManager({ notify }: { notify: (type: 'success' | 'error', t: s
               className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 text-xs outline-none transition-colors"
             />
           </div>
+          <div>
+            <label className="block text-slate-400 text-xs mb-1.5">플랜트 (비워두면 공통부문)</label>
+            <select
+              value={plantId}
+              onChange={(e) => setPlantId(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg py-2 px-3 text-slate-200 text-xs outline-none transition-colors"
+            >
+              <option value="">공통부문 (전체 노출)</option>
+              {plants.map(p => <option key={p.id} value={p.id}>{p.id} — {p.name}</option>)}
+            </select>
+          </div>
           <div className="flex gap-2">
             <button
               type="submit"
@@ -1000,7 +1048,7 @@ function WarehouseManager({ notify }: { notify: (type: 'success' | 'error', t: s
             {editingId && (
               <button
                 type="button"
-                onClick={() => { setEditingId(null); setId(''); setName(''); }}
+                onClick={() => { setEditingId(null); setId(''); setName(''); setPlantId(''); }}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg py-2 px-3 text-xs transition-colors cursor-pointer border-0"
               >
                 취소
@@ -1019,20 +1067,22 @@ function WarehouseManager({ notify }: { notify: (type: 'success' | 'error', t: s
               <tr className="bg-slate-900 text-slate-400 border-b border-slate-800 select-none">
                 <th className="p-3 font-semibold">창고 코드</th>
                 <th className="p-3 font-semibold">창고 이름</th>
+                <th className="p-3 font-semibold">플랜트</th>
                 <th className="p-3 font-semibold text-right">작업</th>
               </tr>
             </thead>
             <tbody>
               {warehouses.length === 0 ? (
-                <tr><td colSpan={3} className="p-8 text-center text-slate-600">등록된 창고가 없습니다.</td></tr>
+                <tr><td colSpan={4} className="p-8 text-center text-slate-600">등록된 창고가 없습니다.</td></tr>
               ) : (
                 warehouses.map(wh => (
                   <tr key={wh.id} className="border-b border-slate-900 hover:bg-slate-900/30 text-slate-300">
                     <td className="p-3 font-mono text-slate-400">{wh.id}</td>
                     <td className="p-3 font-semibold">{wh.name}</td>
+                    <td className="p-3 text-slate-400">{wh.plantId || <span className="text-slate-600">공통</span>}</td>
                     <td className="p-3 text-right space-x-2">
                       <button
-                        onClick={() => { setEditingId(wh.id); setId(wh.id); setName(wh.name); }}
+                        onClick={() => { setEditingId(wh.id); setId(wh.id); setName(wh.name); setPlantId(wh.plantId || ''); }}
                         className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400 transition-colors border-0 cursor-pointer bg-transparent"
                       >
                         <Edit2 size={14} />
