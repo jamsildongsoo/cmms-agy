@@ -240,21 +240,32 @@ public class ProcurementService {
     }
 
     // ==========================================
-    // 입고 취소 (역분개) — 전표(docNo) 단위
+    // 전표 취소 (역분개) — 전표(docNo) 단위. IN/OUT 둘 다 지원.
+    // 규칙: 동일 전표 내 거래 타입 일관 + 그 거래 이후 동일 (창고,품목)에 후속 거래 없음.
+    //   - IN 전표 → 역분개 OUT (refModule=PUR이면 PR receivedQty도 차감)
+    //   - OUT 전표 → 역분개 IN (원본 단가로 정확 복원)
+    // MOVE/ADJ는 별도 페어링/정합성 이슈가 있어 미지원.
     // ==========================================
     @Transactional
-    public void cancelReceive(String companyId, String docNo, String operator) {
+    public void cancelSlip(String companyId, String docNo, String operator) {
         List<InventoryHistory> rows = inventoryHistoryRepository.findByCompanyIdAndDocNo(companyId, docNo);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("전표를 찾을 수 없습니다: " + docNo);
         }
-        // 1) PR 입고 전표인지 확인 + 후속 transaction 존재 여부 검증
+
+        // 1) 동일 거래타입 + 지원 타입(IN/OUT)인지 + 후속 거래 없음 검증
+        String firstType = rows.get(0).getTxTypeCode();
+        if (!"IN".equalsIgnoreCase(firstType) && !"OUT".equalsIgnoreCase(firstType)) {
+            throw new IllegalArgumentException("IN/OUT 전표만 취소 가능합니다 (현재: " + firstType + ").");
+        }
         String prId = null;
         for (InventoryHistory h : rows) {
-            if (!"IN".equalsIgnoreCase(h.getTxTypeCode()) || !AppModule.PUR.name().equals(h.getRefModule())) {
-                throw new IllegalArgumentException("PR 입고 전표만 취소 가능합니다.");
+            if (!firstType.equalsIgnoreCase(h.getTxTypeCode())) {
+                throw new IllegalArgumentException("동일 전표 내 거래 타입이 일관되지 않습니다.");
             }
-            if (prId == null) prId = h.getRefNo();
+            if (prId == null && AppModule.PUR.name().equals(h.getRefModule())) {
+                prId = h.getRefNo();
+            }
             boolean hasSubsequent = inventoryHistoryRepository
                     .existsByCompanyIdAndWarehouseIdAndInventoryIdAndHistoryNoGreaterThan(
                             companyId, h.getWarehouseId(), h.getInventoryId(), h.getHistoryNo());
@@ -263,26 +274,31 @@ public class ProcurementService {
             }
         }
 
-        // 2) 역분개 OUT 생성 (같은 docNo로 묶기)
+        // 2) 역분개 (같은 docNo로 묶기) — IN↔OUT
+        String reverseType = "IN".equalsIgnoreCase(firstType) ? "OUT" : "IN";
         InventoryTxDto.InventoryTxRequest txReq = new InventoryTxDto.InventoryTxRequest();
         List<InventoryTxDto.TxItem> txItems = new ArrayList<>();
         for (InventoryHistory h : rows) {
             InventoryTxDto.TxItem tx = new InventoryTxDto.TxItem();
             tx.setWarehouseId(h.getWarehouseId());
             tx.setInventoryId(h.getInventoryId());
-            tx.setTxTypeCode("OUT");
-            tx.setQty(h.getQty());  // 원본 IN 수량(양수)
+            tx.setTxTypeCode(reverseType);
+            tx.setQty(h.getQty().abs());            // 항상 양수(처리 측에서 OUT은 내부적으로 negate)
+            // OUT 역분개(=IN)는 원본 OUT의 단가로 정확 복원해야 함. IN 역분개(=OUT)는 현재 평균으로 계산해도 동일.
+            if ("OUT".equalsIgnoreCase(firstType)) {
+                tx.setUnitPrice(h.getUnitPrice());
+            }
             tx.setTxDate(LocalDate.now());
-            tx.setDocNo(docNo);  // 같은 전표번호로 묶음
+            tx.setDocNo(docNo);                     // 같은 전표번호로 묶음
             tx.setRefNo(h.getRefNo());
-            tx.setRefModule(AppModule.PUR.name());
+            tx.setRefModule(h.getRefModule());
             txItems.add(tx);
         }
         txReq.setItems(txItems);
         inventoryTransactionService.processTransactions(companyId, txReq, operator);
 
-        // 3) PR 라인 receivedQty 차감
-        if (prId != null) {
+        // 3) PR 라인 receivedQty 차감 (IN+PUR 전표일 때만)
+        if ("IN".equalsIgnoreCase(firstType) && prId != null) {
             List<PurchaseRequestItem> prItems = purchaseRequestItemRepository.findByCompanyIdAndRequestId(companyId, prId);
             for (InventoryHistory h : rows) {
                 for (PurchaseRequestItem pri : prItems) {
@@ -297,6 +313,13 @@ public class ProcurementService {
                 }
             }
         }
+    }
+
+    /** @deprecated use {@link #cancelSlip(String, String, String)} — 동일 동작 + OUT 지원 추가. */
+    @Deprecated
+    @Transactional
+    public void cancelReceive(String companyId, String docNo, String operator) {
+        cancelSlip(companyId, docNo, operator);
     }
 
     // ==========================================

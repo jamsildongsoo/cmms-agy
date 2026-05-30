@@ -762,17 +762,17 @@ export default function InventoryTransaction() {
               >
                 닫기
               </button>
-              {/* 구매 입고 전표(docNo+refModule=PUR+txType=IN)일 때만 역분개 버튼 */}
-              {selectedSlip.txTypeCode === 'IN' && selectedSlip.refModule === 'PUR' && selectedSlip.docNo && (
+              {/* IN/OUT 전표는 역분개 취소 가능 — 후속 거래 없을 때만(서버 검증) */}
+              {(selectedSlip.txTypeCode === 'IN' || selectedSlip.txTypeCode === 'OUT') && selectedSlip.docNo && (
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!confirm(`전표 ${selectedSlip.docNo}을(를) 역분개로 취소합니다.\n이 입고 이후 동일 품목·창고에 거래가 없을 때만 가능합니다. 진행할까요?`)) return;
+                    const label = selectedSlip.txTypeCode === 'IN' ? '입고' : '출고';
+                    if (!confirm(`전표 ${selectedSlip.docNo}을(를) 역분개로 취소합니다.\n이 ${label} 이후 동일 품목·창고에 거래가 없을 때만 가능합니다. 진행할까요?`)) return;
                     try {
-                      await axiosInstance.post(`/procurement/receipts/cancel/${encodeURIComponent(selectedSlip.docNo!)}`);
-                      alert('입고가 역분개로 취소되었습니다.');
+                      await axiosInstance.post(`/procurement/slips/cancel/${encodeURIComponent(selectedSlip.docNo!)}`);
+                      alert(`${label} 전표가 역분개로 취소되었습니다.`);
                       setIsSlipOpen(false);
-                      // 이력 갱신
                       const res = await axiosInstance.get('/inventory-tx/history');
                       setHistoryList(res.data || []);
                     } catch (e: any) {
@@ -781,7 +781,7 @@ export default function InventoryTransaction() {
                   }}
                   className="bg-rose-700 hover:bg-rose-600 text-white rounded-lg py-2 px-4 text-xs font-semibold cursor-pointer border-0"
                 >
-                  입고 취소(역분개)
+                  {selectedSlip.txTypeCode === 'IN' ? '입고' : '출고'} 취소(역분개)
                 </button>
               )}
               <button

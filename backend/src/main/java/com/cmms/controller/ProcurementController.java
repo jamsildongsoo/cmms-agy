@@ -69,11 +69,21 @@ public class ProcurementController {
         return ResponseEntity.ok(procurementService.receive(principal.getCompanyId(), request, principal.getUsername()));
     }
 
+    /** 전표 취소(역분개) — IN/OUT 둘 다 지원. 후속 거래 없을 때만. */
+    @PostMapping("/slips/cancel/{docNo}")
+    @PreAuthorize("@perm.check('STK','C')")
+    public ResponseEntity<Void> cancelSlip(
+            @PathVariable String docNo, @AuthenticationPrincipal UserPrincipal principal) {
+        procurementService.cancelSlip(principal.getCompanyId(), docNo, principal.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    /** @deprecated 호환용 — /slips/cancel/{docNo} 사용 권장. */
     @PostMapping("/receipts/cancel/{docNo}")
     @PreAuthorize("@perm.check('STK','C')")
     public ResponseEntity<Void> cancelReceipt(
             @PathVariable String docNo, @AuthenticationPrincipal UserPrincipal principal) {
-        procurementService.cancelReceive(principal.getCompanyId(), docNo, principal.getUsername());
+        procurementService.cancelSlip(principal.getCompanyId(), docNo, principal.getUsername());
         return ResponseEntity.ok().build();
     }
 
