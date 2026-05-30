@@ -194,3 +194,69 @@ S3 호환 스토리지(Supabase) 기반 첨부. **1차 범위: 게시판·결재
 
 ### 검증
 백엔드 **컴파일** + 프론트 **빌드** 통과. **런타임(실 Supabase Storage) 검증은 추후** — `STORAGE_*` 환경변수·버킷 준비 후 업로드/다운로드/삭제 전체 플로우 + (활성화 시) reconciliation 확인 필요.
+
+---
+
+## 10단계: 구매(Procurement) 도입 + 부수 정리
+
+재고 관리 흐름을 **구매요청 → 발주/배송 → 입고(히스토리) → 플랜트별 재고 가시화**로 확장. 풀 구매 워크플로우(승인·견적·입찰·선정·발주서·회계)는 전산화하지 않고 시스템은 ① PR 기록·출력 ② 발주/배송 절차 상태 ③ 입고 재고 반영 ④ docNo 기반 이력만 책임. 설계 단일 소스는 `docs/product_requirements.md` 2.4·2.0 + `docs/db_specification.md` §1.4·§2.7·§5.1·§5.4·§5.6 + `docs/ui_specification.md` /procurement·§3.6~3.9. 실행 과제 P1~P7은 `docs/todo.md`.
+
+### P1·P1b. 모듈명 통일 + label() + `SeqModule` 제거 (BE+FE)
+- `AppModule` enum **전 모듈 ≤3자 짧은 코드로 통일**: `MDM/EQP/INV/STK/PM/WO/WP/APR/BRD/PUR`. 기존 `APPROVAL`/`STOCK`/`EQUIPMENT`/`INVENTORY`/`BOARD` → `APR`/`STK`/`EQP`/`INV`/`BRD` rename, **신규 `PUR`** 추가. 콜사이트 `@PreAuthorize` 26곳 일괄 치환(Master 11/Approval 5/InvTx 4/Board 6) + V4의 `UPDATE role_detail SET module_detail=...` 5건으로 기존 데이터 정렬.
+- `AppModule.label()` 메서드로 한글 라벨 단일 소스화 → `GET /api/meta/modules` 엔드포인트 신규(`MetaController`). FE `MdmLayout.tsx`의 정적 `MODULE_NAME_MAP`(낡은 키) 폐기 후 동적 로드.
+- **`SeqModule` enum 제거**: 모듈명 통일로 채번 prefix와 권한 키가 동일해져 별도 enum 불필요. 호출부 4곳(`PmService:112`, `WorkPermitService:40`, `WorkOrderService:54`, `ApprovalService:55`) `SeqModule.X.code()` → `AppModule.X.name()` 치환.
+
+### P2. 문서번호 포맷 `{모듈}-{부서}-{년월}-{순번}` (BE)
+- 사유: WO/WP/PM PK가 `(company, plant, id)`인데 채번 카운터는 `(company, module, dept, yyyyMM)`이라, 같은 회사·플랜트의 **다른 부서 사용자가 같은 달 동일 모듈을 생성하면 PK 충돌**(잠재 INSERT 실패). 부서 세그먼트를 출력 문자열에 포함시켜 차단.
+- `SequenceService.java:42` `String.format("%s-%s-%04d", ...)` → `"%s-%s-%s-%04d"`로 변경(`departmentId` 포함). 회사는 PK·UI 컨텍스트에 이미 있어 문자열에서 제외.
+- `ApprovalService.java:55` 채번 호출의 부서를 `"DEPT_ROOT"` 고정 → **기안자 부서**(`drafter.departmentId`, `UserRepository` 주입) 사용 — 전 모듈 단일 채번 포맷 일관성.
+- WO/WP/PM 호출부는 이미 dept 전달 중이라 무변경. 부서 없는 사용자 fallback `DEPT_ROOT`. 기존 데이터(구포맷 id) 그대로 두고 신규부터 새 포맷(혼재 허용).
+
+### P3. V4 마이그레이션 (`V4__procurement.sql`)
+- DDL: `ALTER warehouse ADD plant_id varchar(50)`(nullable=공통부문), `ALTER inventory_history ADD doc_no varchar(50)`, `CREATE vendor` / `purchase_request` / `purchase_request_item`(복합 PK + BaseEntity + FK CASCADE).
+- 데이터 정렬: 모듈명 rename UPDATE 5건, 기존 회사들에 `PUR` `role_detail` INSERT(ADMIN/MANAGER CRUDA Y, USER CRUD Y·A N — 매트릭스 동일), `UPDATE role SET multi_plant='Y' WHERE id='ADMIN'`.
+- 공통코드: `PR_TYPE` 코드그룹 + 아이템(NORMAL/ROUTINE/PLANNED_PM/URGENT/ETC)을 `company_id='SYSTEM'`으로 시드 — 신규 회사는 `copySystemCommonCodes`로 자동 복사되어 별도 시드 불필요.
+
+### P4. `DocStatus` enum 단일 소스 확장 (BE)
+- 별도 `ProcStatus` 만들지 않고 `DocStatus`에 절차상태 4개 **추가**: `ORDERED("O")` / `SHIPPING("D")` / `RECEIVED("I")` / `CLOSED("E")` — mnemonic Order/Delivery/Incoming/End. 기존 `T/P/C/S/R/X`와 비충돌. 분기/상수 최소화 원칙.
+
+### P5. 백엔드 구매 도메인 (모델/Repo/DTO/Service/Controller)
+- 신규 모델 + IdClass + Repository: `Vendor`, `PurchaseRequest`, `PurchaseRequestItem`. `Warehouse`에 `plantId`(nullable), `InventoryHistory`에 `docNo` 필드 추가. `InventoryTxDto.TxItem`에 `docNo`/`refNo`/`refModule` 추가.
+- `VendorService` + `VendorController`(`/api/vendors`, `@perm.check('PUR',...)`): CRUD.
+- `ProcurementService` + `ProcurementController`(`/api/procurement`):
+  - `createOrUpdate`(저장 `status=T`)/`confirm`(확정 `status=S`, 현장; `checkSave('PUR','S')` → C+A 권한). PR은 결재 비연계라 `T`/`S`만 사용(X/P/C/R 미사용 — T 폐기는 deleteYn 소프트 삭제, S 이후 폐기는 절차 종료 E).
+  - `placeOrder`(`proc_status=O`, vendor·orderDate·etaDate)/`startShipping`(`D`, shipStartDate) — `@perm.check('PUR','U')`.
+  - `receive`(현장, `@perm.check('STK','C')` — 재고 반영): 확정(`S`) PR만. STK 전표 채번 → `InventoryTransactionService.processTransactions` 위임(`TxItem{txTypeCode:"IN", docNo, refModule:"PUR", refNo:requestId}`) → `receivedQty` 누적 + `proc_status=I`. `ReceiveRequest.close=true`면 곧바로 `E`. **수량 과소/초과 판정 안 함**.
+  - `close`(`E`, 현장; `@perm.check('PUR','U')`): 독립 액션 — 미입고 PR도 호출 가능.
+  - **`cancelSlip(docNo)`(현장, `@perm.check('STK','C')`)**: IN/OUT 둘 다 역분개(같은 docNo로 묶음). IN 취소 시 PR `received_qty` 차감, OUT 취소 시 원본 단가로 정확 복원. **공통 조건: 그 거래 이후 동일 `(company, warehouse, inventory)`에 어떤 transaction도 없을 때만**(이동평균 손상 방지). MOVE/ADJ 미지원. 엔드포인트 `POST /api/procurement/slips/cancel/{docNo}` + 호환용 `/receipts/cancel/{docNo}` 별칭.
+- `InventoryTransactionService`: `SequenceService`+`UserRepository` 주입. `processTransactions` 시 items 중 docNo가 있으면 사용, 없으면 STK 전표 자동 채번(조작자 부서). `executeCheckIn/Out/Adjustment/Transfer`에서 history `docNo`/`refNo`/`refModule` 세팅. MOVE 페어링의 `refModule`을 `"INVENTORY"` → `"MOVE"`로 의미 명확화.
+- `InventoryHistoryRepository`: `existsByCompanyIdAndWarehouseIdAndInventoryIdAndHistoryNoGreaterThan`(역분개 후속거래 체크), `findByCompanyIdAndDocNo`(전표 묶음), `findByCompanyIdAndRefModuleAndRefNo`(PR별 입고 이력).
+- `AuthService.login`: `LoginResponse`에 `companyName`/`lastLoginPlantId`/`multiPlant` 추가. **로그인 시 플랜트 자동 해소**(L80~85 최종 로그인 갱신 블록) — `lastLoginPlantId`가 null이면 회사 첫 활성 플랜트(`plant.deleteYn='N'`, id 정렬)를 자동 매핑·기록 → 다음 로그인부터 재사용. 플랜트 0개면 null 유지(전체). 관리자가 지정한 값이 있으면 건드리지 않음(우선).
+- `MdmService.updateUser`에 `lastLoginPlantId` 반영(관리자 지정), `updateWarehouse`에 `plantId` 반영(공통부문=null). `CompanyService.seedRoles`: ADMIN 역할 `multi_plant='Y'`(그 외 N).
+
+### P6·P6b. 프론트엔드 구매 화면 + 출력폼 + 플랜트 UI + MDM 폼 보강
+- **신규 `Procurement.tsx`**(내부 탭 **구매요청/벤더 관리**): 목록(플랜트 스코프) + 상태 액션(신규/수정·확정·발주·배송·입고·종료) + 모달들. 입고 모달은 잔여 프리필·편집 가능(부분/과소/초과 UI 경고만)·단가 미입력 허용·'이 요청 종료' 체크박스. 문서/절차 상태 뱃지 분리. **구매요청서 인쇄**(`PrintHeader`+`PrintSignBox`).
+- **신규 `PrintSignBox.tsx`**: 2열×4행(8칸)·라벨 없는 빈 수기 결재칸(Approval 박스 형식 차용). 구매요청서/입고증/출고증 공통.
+- **`PrintHeader.tsx` 변경**: 표시 회사값 `companyId` → `companyName`(fallback `companyId`). 기존 사용처(Inventory/Equipment) 자동 반영, 그 외 자체 헤더 페이지(WO/WP/PM/Approval/InvTx 목록)는 본 범위 외(전사 헤더 통일은 별도 작업).
+- **`useAuthStore.ts`**: User 인터페이스에 `companyName`/`lastLoginPlantId`/`multiPlant` 추가, `activePlantId` 상태(로그인 시 lastLoginPlantId로 초기화) + `setActivePlantId`(멀티만 변경 가능).
+- **`Header.tsx`**: 멀티 권한자만 플랜트 드롭다운(전체총괄 + 플랜트 목록), 비멀티는 라벨(null이면 '전체'). `/api/mdm/plants` 로드.
+- **`MdmLayout.tsx` 보강**(P6b-1):
+  - `WarehouseManager`: 플랜트 select(공통부문=null 옵션) — 폼·목록·수정 모두 반영, 목록에 '플랜트' 컬럼.
+  - `UserManager`: 지정 플랜트 select(자동매핑=null 옵션) — 관리자 지정 시 로그인 자동매핑보다 우선.
+  - `RoleManager`: `multi_plant` 체크박스(신규 권한 그룹), 권한 목록에 '멀티' 뱃지. 정적 `MODULE_NAME_MAP` 폐기 → `/api/meta/modules` 동적 로드.
+- **`InventoryTransaction.tsx` 확장**(P6b-2): `InventoryHistoryModel`에 `docNo` 추가, 이력 테이블 '이력번호' 컬럼 → '전표번호'(docNo 우선·없으면 `(NO.{historyNo})` 폴백). 전표 인쇄 모달 Slip:
+  - 제목 `tx_type_code` 분기 — `IN`→**입고증** / `OUT`→**출고증** / `ADJ`→재고조정전표 / `MOVE_*`→재고이동전표.
+  - 전표번호(docNo)를 큰 글씨로 노출, 이력번호는 보조 정보.
+  - 출처 표기: `refModule='PUR'`이면 "구매요청 출처: PR번호", 그 외는 기존 이동 페어링 참조.
+  - **전표 취소(역분개) 버튼** — `txTypeCode in {IN, OUT}` AND `docNo` 있을 때 푸터 노출. 라벨/확인메시지 거래타입에 따라 '입고 취소' / '출고 취소' 분기. `POST /api/procurement/slips/cancel/{docNo}` 호출.
+- **`Sidebar.tsx`** '업무 트랜잭션' 그룹에 '구매(Procurement)' 단일 항목, **`Dashboard.tsx`** `case 'procurement'` switch 추가.
+- UI 통일성: 12개 액션 버튼 라벨 단축(`신규 설비 등록` → `입력`, `예방점검 이력 목록` → `목록`, `일반 기안서 상신` → `기안문` 등 — 사이드바·헤더에 이미 모듈/탭 컨텍스트가 있어 버튼은 동작만 표시). `Procurement.tsx` `.input` 클래스 CSS 변수(`var(--color-slate-900)` 등)로 정정 — 라이트/다크 모드 자동 반전.
+
+### 검증
+- **빌드/컴파일**: 백엔드 `./gradlew compileJava` SUCCESS, 프론트 `npm run build` 통과(1818 modules).
+- **마이그레이션 적용**: 앱 기동 시 Flyway V4 자동 적용. `role_detail.module_detail`이 신규 코드로 정렬, `warehouse.plant_id`/`inventory_history.doc_no` 컬럼 생성, 신규 3 테이블 생성, `role.multi_plant='Y' WHERE id='ADMIN'`, `PR_TYPE` 공통코드 SYSTEM 시드 확인.
+- **런타임 엔드포인트 점검**: `POST /api/auth/login`(sysadmin) → 응답에 `companyName="시스템 관리본부"`/`multiPlant="Y"`/`lastLoginPlantId=null` 채워짐. `GET /api/meta/modules` → 10개 모듈+한글 라벨 정상. `/api/vendors`·`/api/procurement/requests` 200(빈 배열).
+- **남은 검증**: 풀 사이클 E2E(벤더 등록→PR→발주→배송→입고→입고증 출력→입고/출고 취소→종료) + 다부서 번호 충돌 회귀(같은 회사·플랜트의 다른 부서가 같은 달 WO 동시 생성 시 PK 충돌 없음 확인)는 사용자 측 브라우저 검증 진행 중.
+
+### 임시 종합 설계서 폐기
+구현 기간 한정 임시 문서 `docs/procurement.md`는 폐기(`d0a66da`). 내용은 PRD(2.4 구매·2.0 공통)·DB명세(§1.4·§2.7·§5)·UI명세(/procurement·§3.6~3.9)·todo.md(P1~P7)로 분산 흡수. 신규 작업 시 이 4문서가 단일 소스.
