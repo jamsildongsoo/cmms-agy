@@ -339,7 +339,7 @@ export default function WorkOrder() {
             className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors border-0 cursor-pointer shadow-lg shadow-blue-900/20"
           >
             <Plus size={14} />
-            신규 작업지시 등록
+            입력
           </button>
 
           {/* Subtab control */}
@@ -358,7 +358,7 @@ export default function WorkOrder() {
                 activeSubTab === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              작업 실적/이력 목록
+              목록
             </button>
           </div>
         </div>

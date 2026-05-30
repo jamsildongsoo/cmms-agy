@@ -288,7 +288,7 @@ export default function PreventiveMaintenance() {
               activeSubTab === 'schedule' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            점검 대상 스케줄
+            입력
           </button>
           <button
             onClick={() => setActiveSubTab('history')}
@@ -296,7 +296,7 @@ export default function PreventiveMaintenance() {
               activeSubTab === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            예방점검 이력 목록
+            목록
           </button>
         </div>
         </div>

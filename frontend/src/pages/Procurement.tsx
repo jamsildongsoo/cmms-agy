@@ -238,7 +238,7 @@ export default function Procurement() {
           <div className="flex justify-between items-center mb-4 print:hidden">
             <h2 className="text-lg font-bold text-slate-200">구매요청 목록</h2>
             <button onClick={openNewForm} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 cursor-pointer border-0">
-              <Plus size={13} /> 신규 요청
+              <Plus size={13} /> 입력
             </button>
           </div>
           <table className="w-full text-xs">
@@ -314,7 +314,7 @@ export default function Procurement() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-slate-200">벤더 관리</h2>
             <button onClick={() => setVendorForm({ id: '', name: '', bizNo: '', contact: '', manager: '', remarks: '' })} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1 cursor-pointer border-0">
-              <Plus size={13} /> 신규 벤더
+              <Plus size={13} /> 입력
             </button>
           </div>
           <table className="w-full text-xs">

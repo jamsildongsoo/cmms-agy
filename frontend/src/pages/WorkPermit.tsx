@@ -465,7 +465,7 @@ export default function WorkPermit() {
             className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors border-0 cursor-pointer shadow-lg shadow-blue-900/20"
           >
             <Plus size={14} />
-            신규 작업허가서 작성
+            입력
           </button>
         </div>
       </div>

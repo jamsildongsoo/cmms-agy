@@ -302,7 +302,7 @@ export default function Equipment() {
             className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
           >
             <Plus size={15} />
-            신규 설비 등록
+            입력
           </button>
         </div>
       </div>

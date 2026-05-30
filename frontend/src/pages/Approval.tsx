@@ -239,7 +239,7 @@ export default function Approval() {
             className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-colors border-0 cursor-pointer shadow-lg shadow-blue-900/20"
           >
             <Plus size={14} />
-            일반 기안서 상신
+            기안문
           </button>
 
           {/* Subtab control */}
