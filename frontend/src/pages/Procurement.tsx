@@ -520,10 +520,22 @@ export default function Procurement() {
         </div>
       )}
 
-      {/* 인쇄 후 인쇄 영역 정리용 */}
+      {/* 입력 공통 클래스 — MdmLayout 등 다른 화면과 동일 스타일 */}
       <style>{`
-        .input { background: #0f172a; border: 1px solid #1e293b; color: #e2e8f0; border-radius: 6px; padding: 4px 8px; width: 100%; outline: none; }
-        .input:focus { border-color: #3b82f6; }
+        .input {
+          width: 100%;
+          background-color: rgb(15 23 42);
+          border: 1px solid rgb(30 41 59);
+          color: rgb(226 232 240);
+          font-size: 0.75rem;
+          line-height: 1rem;
+          border-radius: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          outline: none;
+          transition: border-color 0.15s ease;
+        }
+        .input:focus { border-color: rgb(59 130 246); }
+        .input:disabled { opacity: 0.5; }
       `}</style>
     </div>
   );
@@ -532,9 +544,9 @@ export default function Procurement() {
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 print:hidden">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-[640px] max-h-[90vh] overflow-y-auto">
+      <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 w-[640px] max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-bold text-slate-100">{title}</h3>
+          <h3 className="text-sm font-bold text-slate-200">{title}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-200 bg-transparent border-0 cursor-pointer">
             <X size={18} />
           </button>
@@ -547,8 +559,8 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className={`flex flex-col gap-1 ${className || ''}`}>
-      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
+    <label className={`flex flex-col ${className || ''}`}>
+      <span className="block text-slate-400 text-xs mb-1.5">{label}</span>
       {children}
     </label>
   );
