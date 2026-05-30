@@ -1,27 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import { Building2, User, Lock, Mail, Phone, Briefcase, ChevronRight, Sun, Moon } from 'lucide-react';
 
 export default function Login() {
   const { login, signUp, error, setError } = useAuthStore();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLightMode, setIsLightMode] = useState(() => {
-    return localStorage.getItem('theme') === 'light';
-  });
-
-  useEffect(() => {
-    if (isLightMode) {
-      document.documentElement.classList.add('light');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-    }
-  }, [isLightMode]);
-
-  const toggleTheme = () => {
-    setIsLightMode(!isLightMode);
-  };
+  const isLightMode = useThemeStore((s) => s.isLight);
+  const toggleTheme = useThemeStore((s) => s.toggle);
 
   // Login form state
   const [loginCompanyId, setLoginCompanyId] = useState('');
@@ -64,6 +50,7 @@ export default function Login() {
     const success = await login(loginCompanyId, loginUserId, loginPassword);
     setIsLoading(false);
     if (success) {
+      // 비밀번호 변경 안내는 Dashboard의 PasswordChangeNotice 모달이 처리(플래그 기반)
       if (rememberMe) {
         localStorage.setItem('saved_company_id', loginCompanyId);
         localStorage.setItem('saved_user_id', loginUserId);
@@ -256,7 +243,7 @@ export default function Login() {
                   <input
                     type="text"
                     required
-                    placeholder="신규 입력시 자동 생성"
+                    placeholder="예: COMP001 (없는 코드면 신규 회사 생성)"
                     value={signupCompanyId}
                     onChange={(e) => setSignupCompanyId(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg py-2 pl-9 pr-3 text-slate-200 placeholder-slate-600 outline-none text-xs transition-colors"

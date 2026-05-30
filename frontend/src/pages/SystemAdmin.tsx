@@ -35,6 +35,10 @@ export default function SystemAdmin() {
   const [coName, setCoName] = useState('');
   const [coBizNo, setCoBizNo] = useState('');
   const [coEmail, setCoEmail] = useState('');
+  // 초기 관리자(ADMIN) 계정
+  const [coAdminId, setCoAdminId] = useState('');
+  const [coAdminName, setCoAdminName] = useState('');
+  const [coAdminPw, setCoAdminPw] = useState('');
   const [coSaving, setCoSaving] = useState(false);
 
   // 사용자 관리
@@ -62,6 +66,10 @@ export default function SystemAdmin() {
       setMessage({ type: 'error', text: '회사 코드와 회사명은 필수입니다.' });
       return;
     }
+    if (!coAdminId.trim() || !coAdminName.trim() || !coAdminPw) {
+      setMessage({ type: 'error', text: '관리자 ID·이름·초기 비밀번호는 필수입니다.' });
+      return;
+    }
     setCoSaving(true);
     try {
       await axiosInstance.post('/mdm/companies', {
@@ -69,9 +77,13 @@ export default function SystemAdmin() {
         name: coName.trim(),
         businessNumber: coBizNo.trim() || null,
         email: coEmail.trim() || null,
+        adminId: coAdminId.trim(),
+        adminName: coAdminName.trim(),
+        adminPassword: coAdminPw,
       });
-      setMessage({ type: 'success', text: `회사 '${coId.trim().toUpperCase()}' 생성 완료 (기본 롤·권한·공통코드 시드됨).` });
+      setMessage({ type: 'success', text: `회사 '${coId.trim().toUpperCase()}' + 관리자 '${coAdminId.trim()}'(ADMIN) 생성 완료. 첫 로그인 시 비밀번호 변경이 필요합니다.` });
       setCoId(''); setCoName(''); setCoBizNo(''); setCoEmail('');
+      setCoAdminId(''); setCoAdminName(''); setCoAdminPw('');
       fetchCompanies();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.response?.data?.message || '회사 생성 실패' });
@@ -149,7 +161,7 @@ export default function SystemAdmin() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-slate-200">신규 회사 생성</h3>
-            <p className="text-[11px] text-slate-500">생성 시 기본 롤(ADMIN/MANAGER/USER)·권한 매트릭스·공통코드가 자동 시딩됩니다. 회사 코드는 대문자로 정규화됩니다.</p>
+            <p className="text-[11px] text-slate-500">생성 시 기본 롤(ADMIN/MANAGER/USER)·권한 매트릭스·공통코드가 자동 시딩되고, 아래 관리자 계정이 <span className="text-slate-300 font-semibold">ADMIN 롤</span>로 함께 생성됩니다. 회사 코드는 대문자로 정규화됩니다.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input value={coId} onChange={e => setCoId(e.target.value)} placeholder="회사 코드 * (영문 대문자/숫자)"
                 className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
@@ -158,6 +170,15 @@ export default function SystemAdmin() {
               <input value={coBizNo} onChange={e => setCoBizNo(e.target.value)} placeholder="사업자번호 (선택)"
                 className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
               <input value={coEmail} onChange={e => setCoEmail(e.target.value)} placeholder="대표 이메일 (선택)"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+            </div>
+            <p className="text-[11px] font-semibold text-slate-400 pt-1">초기 관리자 계정 (ADMIN)</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input value={coAdminId} onChange={e => setCoAdminId(e.target.value)} placeholder="관리자 ID *"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+              <input value={coAdminName} onChange={e => setCoAdminName(e.target.value)} placeholder="관리자 이름 *"
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
+              <input type="password" value={coAdminPw} onChange={e => setCoAdminPw(e.target.value)} placeholder="초기 비밀번호 *"
                 className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200" />
             </div>
             <button onClick={createCompany} disabled={coSaving}

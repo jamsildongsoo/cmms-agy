@@ -1,13 +1,16 @@
 package com.cmms.service;
 
+import com.cmms.dto.CompanyDto.CompanyCreateRequest;
 import com.cmms.model.*;
 import com.cmms.repository.*;
 import com.cmms.security.AppModule;
 import com.cmms.util.CodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +32,10 @@ public class CompanyService {
     private CodeGroupRepository codeGroupRepository;
     @Autowired
     private CodeItemRepository codeItemRepository;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<Company> getAllCompanies() {
@@ -44,21 +51,51 @@ public class CompanyService {
                 .orElseThrow(() -> new IllegalArgumentException("회사를 찾을 수 없습니다."));
     }
 
-    /** 회사 생성 + 초기 시드(롤/권한매트릭스/공통코드 복사). */
+    /** 회사 생성 + 초기 시드(롤/권한매트릭스/공통코드 복사) + 초기 관리자(ADMIN) 계정 생성. */
     @Transactional
-    public Company createCompany(Company company, String operator) {
-        String companyId = CodeUtil.normalize(company.getId());
+    public Company createCompany(CompanyCreateRequest req, String operator) {
+        String companyId = CodeUtil.normalize(req.getId());
         if (companyRepository.existsById(companyId)) {
             throw new IllegalArgumentException("이미 존재하는 회사 코드입니다.");
         }
+        if (isBlank(req.getName())) {
+            throw new IllegalArgumentException("회사명은 필수입니다.");
+        }
+        if (isBlank(req.getAdminId()) || isBlank(req.getAdminName()) || isBlank(req.getAdminPassword())) {
+            throw new IllegalArgumentException("관리자 ID·이름·초기 비밀번호는 필수입니다.");
+        }
+
+        Company company = new Company();
         company.setId(companyId);
+        company.setName(req.getName().trim());
+        company.setBusinessNumber(req.getBusinessNumber());
+        company.setEmail(req.getEmail());
         company.setCreatedBy(operator);
         company.setUpdatedBy(operator);
         Company saved = companyRepository.save(company);
 
-        seedRoles(companyId);
+        seedRoles(companyId);            // 관리자 생성보다 먼저 — ADMIN 롤 FK 보장
         copySystemCommonCodes(companyId);
+
+        // 초기 관리자(ADMIN) 계정 — 부트스트랩용. 첫 로그인 시 비밀번호 강제 변경.
+        User admin = new User();
+        admin.setCompanyId(companyId);
+        admin.setId(req.getAdminId().trim());
+        admin.setName(req.getAdminName().trim());
+        admin.setPasswordHash(passwordEncoder.encode(req.getAdminPassword()));
+        admin.setRoleId("ADMIN");
+        admin.setUseYn("Y");
+        admin.setPasswordChangedAt(LocalDateTime.now());
+        admin.setMustChangePassword("Y");
+        admin.setCreatedBy(operator);
+        admin.setUpdatedBy(operator);
+        userRepository.save(admin);
+
         return saved;
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 
     @Transactional

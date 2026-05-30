@@ -1,26 +1,11 @@
-import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
+import { useThemeStore } from '../store/useThemeStore';
 import { LogOut, Clock, RefreshCw, UserCheck, Sun, Moon } from 'lucide-react';
 
 export default function Header() {
   const { user, timeRemaining, extendSession, logout } = useAuthStore();
-  const [isLightMode, setIsLightMode] = useState(() => {
-    return localStorage.getItem('theme') === 'light';
-  });
-
-  useEffect(() => {
-    if (isLightMode) {
-      document.documentElement.classList.add('light');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-    }
-  }, [isLightMode]);
-
-  const toggleTheme = () => {
-    setIsLightMode(!isLightMode);
-  };
+  const isLightMode = useThemeStore((s) => s.isLight);
+  const toggleTheme = useThemeStore((s) => s.toggle);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -29,19 +14,21 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 h-14 px-5 flex items-center justify-between text-slate-300 shrink-0 select-none w-full z-50 print:hidden">
-      {/* 좌측: 로고 + 시스템명 */}
-      <div className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-900/40 shrink-0">
-          K
+    <header className="bg-slate-900 border-b border-slate-800 h-14 pr-5 flex items-center justify-between text-slate-300 shrink-0 select-none w-full z-50 print:hidden">
+      {/* 좌측: 로고 + 시스템명 + 사용자 정보 */}
+      <div className="flex items-center h-full">
+        {/* 로고 영역 — 폭을 사이드바(w-56)와 동기화하여 우측 border-r이 사이드바 구분선과 일치 */}
+        <div className="flex items-center gap-3 w-56 h-full px-5 border-r border-slate-800 shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-blue-900/40 shrink-0">
+            K
+          </div>
+          <div className="leading-tight">
+            <h1 className="text-sm font-extrabold text-slate-100 tracking-wide">설비관리시스템</h1>
+            <span className="text-[10px] text-slate-500 font-semibold">한국플랜트서비스</span>
+          </div>
         </div>
-        <div className="leading-tight">
-          <h1 className="text-sm font-extrabold text-slate-100 tracking-wide">설비관리시스템</h1>
-          <span className="text-[10px] text-slate-500 font-semibold">한국플랜트서비스</span>
-        </div>
-        <div className="w-px h-6 bg-slate-800 mx-2" />
         {/* 로그인 사용자 정보 */}
-        <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400">
+        <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 ml-5">
           <UserCheck size={13} className="text-blue-500" />
           <span className="font-semibold text-slate-200">[{user?.companyId}]</span>
           <span>{user?.name}</span>

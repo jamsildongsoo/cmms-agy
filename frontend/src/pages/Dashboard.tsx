@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useAuthStore } from '../store/useAuthStore';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import PasswordChangeNotice from '../components/PasswordChangeNotice';
 import MyPage from './MyPage';
 import MdmLayout from './MdmLayout';
 import Equipment from './Equipment';
@@ -16,6 +18,9 @@ import { LayoutDashboard, AlertTriangle } from 'lucide-react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const user = useAuthStore((s) => s.user);
+  // 비밀번호 변경 안내 모달 — 로그인 시 플래그면 표시, 세션 내 닫으면 재표시 안 함
+  const [showPwNotice, setShowPwNotice] = useState(!!user?.mustChangePassword);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -105,6 +110,14 @@ export default function Dashboard() {
           {renderContent()}
         </main>
       </div>
+
+      {showPwNotice && (
+        <PasswordChangeNotice
+          expired={!!user?.passwordExpired}
+          onGoChange={() => { setActiveTab('mypage'); setShowPwNotice(false); }}
+          onClose={() => setShowPwNotice(false)}
+        />
+      )}
     </div>
   );
 }

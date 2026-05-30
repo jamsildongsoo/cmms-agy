@@ -40,6 +40,8 @@ public class AuthDto {
         private String departmentId;
         private String position;
         private String title;
+        private boolean mustChangePassword; // 강제 변경 필요(만료 또는 관리자 초기화)
+        private boolean passwordExpired;    // 만료 경과 여부(안내용)
     }
 
     @Getter

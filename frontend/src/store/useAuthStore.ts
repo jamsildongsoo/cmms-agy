@@ -10,6 +10,8 @@ interface User {
   departmentId: string | null;
   position: string | null;
   title: string | null;
+  mustChangePassword?: boolean; // 만료 또는 관리자 초기비번 → 변경 권고
+  passwordExpired?: boolean;
 }
 
 const SESSION_MS = 1800 * 1000; // 30분 (서버 JWT 만료와 동일)
@@ -55,6 +57,8 @@ export const useAuthStore = create<AuthState>()(
             departmentId: data.departmentId,
             position: data.position,
             title: data.title,
+            mustChangePassword: data.mustChangePassword,
+            passwordExpired: data.passwordExpired,
           };
 
           const token = data.accessToken;

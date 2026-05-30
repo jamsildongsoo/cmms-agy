@@ -1,5 +1,6 @@
 package com.cmms.controller;
 
+import com.cmms.dto.CompanyDto;
 import com.cmms.model.Company;
 import com.cmms.security.UserPrincipal;
 import com.cmms.service.CompanyService;
@@ -34,8 +35,8 @@ public class CompanyController {
     }
 
     @PostMapping
-    public ResponseEntity<Company> createCompany(@RequestBody Company company, @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(companyService.createCompany(company, principal.getUsername()));
+    public ResponseEntity<Company> createCompany(@RequestBody CompanyDto.CompanyCreateRequest request, @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(companyService.createCompany(request, principal.getUsername()));
     }
 
     @PutMapping("/{id}")

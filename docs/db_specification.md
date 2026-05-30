@@ -25,6 +25,16 @@
     *   `company_id = 'SYSTEM'`은 플랫폼 관리(가입 회사 등록, 모니터링 등)를 위해 예약된 시스템 관리자용 테넌트입니다.
     *   `system` 계정은 테넌트 격리 정책을 우회하여 모든 `company_id`에 해당하는 데이터를 쿼리할 수 있도록 어플리케이션(Spring Boot) 레이어에서 제어합니다.
 
+### 1.4. 문서번호 채번 규칙 (`sequence_generator` + `SequenceService`)
+*   **카운터 키(`sequence_generator` PK)** = `(company_id, ref_module, department_id, year_month)` 4축. 이 조합마다 `last_seq` 1행씩 보유.
+*   **출력 문자열 포맷** = **`{모듈}-{부서}-{년월}-{순번}`** (예: `WO-MAINT-202605-0001`, `APR-MAINT-202605-0001`, `PUR-MAINT-202605-0001`, `STK-MAINT-202605-0001`).
+    *   회사·부서는 카운터 분리 키이지만, **회사는 문자열에 포함하지 않음**(엔티티 PK에 이미 있고 UI에 표시되므로 중복 정보).
+    *   **부서는 문자열에 포함**(같은 회사·플랜트에서 다른 부서가 같은 달 동일 모듈 생성 시 PK 충돌 방지).
+    *   부서 = 처리자 부서(WO/WP/PM=담당, APR=기안자, PUR=요청자, STK=조작자). 사용자 부서 없으면 fallback `DEPT_ROOT`.
+*   **모듈 코드** = `SeqModule` enum(§5.4). **2~3자**(WO/WP/PM/APR/PUR/STK).
+*   **순번** = 4자리 0채움(`%04d`). 매월 0001부터 리셋.
+*   **컬럼 길이**: id·ref_no 컬럼 VARCHAR(50). 실제 코드 길이 짧아 50자 안에 들어옴(부서코드 ≤30자 권장).
+
 ---
 
 ## 2. 모듈별 테이블 DDL 및 상세 명세
@@ -613,6 +623,102 @@ CREATE TABLE kpx_interface (
 
 ---
 
+### 2.7. 구매 (Procurement)
+
+**기존 테이블 컬럼 추가 (V4 ALTER):**
+```sql
+-- 창고에 플랜트 속성 (nullable = 공통부문)
+ALTER TABLE warehouse         ADD COLUMN plant_id VARCHAR(50);
+
+-- 재고 이력에 전표번호 (단일 STK 체계, IN/OUT/MOVE/ADJ 공통, 방향은 tx_type_code로 판별)
+ALTER TABLE inventory_history ADD COLUMN doc_no   VARCHAR(50);
+```
+
+**신규 테이블:**
+```sql
+-- 벤더(거래처) 마스터
+CREATE TABLE vendor (
+    company_id VARCHAR(50) REFERENCES company(id),
+    id         VARCHAR(50),
+    name       VARCHAR(100) NOT NULL,
+    biz_no     VARCHAR(50),                 -- 사업자번호
+    contact    VARCHAR(100),                -- 연락처
+    manager    VARCHAR(50),                 -- 담당자
+    remarks    TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(50) NOT NULL,
+    delete_yn  CHAR(1)     NOT NULL DEFAULT 'N',
+    PRIMARY KEY (company_id, id)
+);
+
+-- 구매요청(헤더). 결재 비연계 — status 컬럼은 DocStatus 재사용(T/S/X 중 PR은 T/S만 사용; X 미사용).
+-- 절차상태(proc_status)는 동일 DocStatus enum의 O/D/I/E 사용.
+CREATE TABLE purchase_request (
+    company_id      VARCHAR(50) REFERENCES company(id),
+    id              VARCHAR(50),                          -- 채번 PUR-{요청자부서}-yyyyMM-####
+    plant_id        VARCHAR(50) NOT NULL,                 -- 컨텍스트 주입(클라 입력 금지)
+    warehouse_id    VARCHAR(50) NOT NULL,                 -- 입고 저장소(헤더 1개, 확정 후 불변)
+    requester_id    VARCHAR(50) NOT NULL,                 -- 요청자(현장)
+    request_date    DATE        NOT NULL,
+    request_type    VARCHAR(50),                          -- 공통코드 PR_TYPE 아이템 id (FK 없음, SYSTEM 공유)
+    vendor_id       VARCHAR(50),                          -- 발주 시 기록(nullable)
+    order_date      DATE,                                 -- 발주일
+    eta_date        DATE,                                 -- 예정도착일
+    ship_start_date DATE,                                 -- 배송시작일
+    status          CHAR(1)     NOT NULL DEFAULT 'T',     -- T(저장) / S(직접확정) / [X 미사용 — 폐기는 deleteYn 또는 proc_status=E]
+    proc_status     CHAR(1),                              -- NULL(미시작) / O(발주) / D(배송) / I(입고) / E(종료)
+    remarks         TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(50) NOT NULL,
+    delete_yn  CHAR(1)    NOT NULL DEFAULT 'N',
+    PRIMARY KEY (company_id, id),
+    FOREIGN KEY (company_id, plant_id)     REFERENCES plant(company_id, id),
+    FOREIGN KEY (company_id, warehouse_id) REFERENCES warehouse(company_id, id),
+    FOREIGN KEY (company_id, requester_id) REFERENCES users(company_id, id),
+    FOREIGN KEY (company_id, vendor_id)    REFERENCES vendor(company_id, id)
+);
+
+-- 구매요청 라인(상세) — 자식 테이블, BaseEntity 컬럼 없음 + CASCADE (work_order_item 패턴)
+CREATE TABLE purchase_request_item (
+    company_id   VARCHAR(50),
+    request_id   VARCHAR(50),
+    line_no      INT,
+    inventory_id VARCHAR(50)    NOT NULL,
+    qty          NUMERIC(15, 4) NOT NULL,            -- 요청수량(확정 후 불변)
+    unit         VARCHAR(20),
+    received_qty NUMERIC(15, 4) NOT NULL DEFAULT 0,  -- 입고 누적(역분개 시 차감)
+    remarks      TEXT,
+    PRIMARY KEY (company_id, request_id, line_no),
+    FOREIGN KEY (company_id, request_id)   REFERENCES purchase_request(company_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id, inventory_id) REFERENCES inventory(company_id, id)
+);
+```
+
+**입고 처리·취소(역분개) 정책:**
+- 입고 = 확정(`status='S'`) PR만 대상. `InventoryTransactionService.processTransactions()`에 IN 위임(`doc_no`=STK 채번, `ref_module='PUR'`/`ref_no=PR번호`) → 재고 반영 + 라인 `received_qty` 누적 + `proc_status='I'`.
+- 입고 취소 = 같은 `doc_no`로 OUT 역분개 + `received_qty` 차감. **조건: 그 입고 이후 동일 `(company_id, warehouse_id, inventory_id)`에 어떤 transaction(IN/OUT/MOVE/ADJ)도 없을 때만 허용**(이동평균 손상 방지). 위반 시 명시적 에러.
+- 종료(`proc_status='E'`): 입고 모달 '종료' 체크 또는 독립 종료 액션(0 입고 PR도 종료 가능).
+
+**플랜트 스코핑 (warehouse.plant_id):**
+- `NULL` = 공통부문(모든 사용자에게 보임).
+- 비멀티(`role.multi_plant='N'`) 사용자는 본인 `last_login_plant_id` + 공통(NULL)만 조회.
+- 멀티(`role.multi_plant='Y'`) 사용자는 플랜트 전환 또는 '전체'(필터 없음=합산).
+
+**`PR_TYPE` 공통코드 (V4 시드, `company_id='SYSTEM'` 공유):**
+| 코드 | 라벨 | 정렬 |
+|---|---|---|
+| `NORMAL` | 일반 | 10 |
+| `ROUTINE` | 경상 | 20 |
+| `PLANNED_PM` | 계획예방정비 | 30 |
+| `URGENT` | 긴급 | 40 |
+| `ETC` | 기타 | 99 |
+
+---
+
 ## 3. 정합성 및 성능 인덱스 가이드
 
 1.  **소프트 딜리트 인덱스**: 모든 소프트 딜리트 대상 테이블의 조회 쿼리에 `delete_yn = 'N'` 조건이 포함되므로, 조회 빈도가 높은 테이블(`users`, `equipment`, `inventory_status`, `work_order`, `pm_record`)에는 복합 기본키 외에 `(company_id, delete_yn)` 또는 `(delete_yn)` 필터를 지원하는 부분 인덱스(Partial Index)를 적용하여 조회 효율을 극대화합니다.
@@ -703,7 +809,9 @@ CREATE TABLE kpx_interface (
 > 본 섹션이 상태/유형 코드의 **정본**이다. 위 DDL 인라인 주석과 어긋나면 이 표를 우선한다.
 > 원칙: **상호배타 다중상태 = 단일 코드(enum)**, **이분(예/아니오) = `Y`/`N` 플래그**. 백엔드 enum은 `com.cmms.constant`에 정의.
 
-### 5.1. 문서 상태 — `DocStatus` (`status` 컬럼; PM/WO/WP/Approval)
+### 5.1. 문서 상태 + 구매 절차 상태 — `DocStatus` (단일 enum)
+
+**문서 상태(`status` 컬럼; PM/WO/WP/Approval/PurchaseRequest)**
 | 코드 | enum | 의미 |
 |---|---|---|
 | `T` | TEMP | 임시저장 |
@@ -712,7 +820,16 @@ CREATE TABLE kpx_interface (
 | `S` | SELF_CONFIRMED | 직접확정(권한자, 결재 우회) |
 | `R` | REJECTED | 반려 |
 | `X` | CANCELED | 취소 |
-> Approval 문서는 `S` 미사용(부분집합).
+> Approval 문서는 `S` 미사용. **PurchaseRequest는 결재 비연계라 `T`/`S`만 사용**(P/C/R/X 모두 미사용 — `T` 폐기는 `delete_yn` 소프트 삭제, `S` 이후 폐기는 절차 종료 `E`).
+
+**구매 절차 상태(`proc_status` 컬럼; PurchaseRequest 전용)** — 동일 `DocStatus` enum에 추가 (별도 enum 없음)
+| 코드 | enum | 의미 |
+|---|---|---|
+| `O` | ORDERED | 발주 |
+| `D` | SHIPPING | 배송중 |
+| `I` | RECEIVED | 입고(1회 이상) |
+| `E` | CLOSED | 종료(현장 명시) |
+> 미시작은 NULL. **수량으로 완료 판정하지 않음** — 입고가 있으면 `I`, 현장이 명시적으로 닫으면 `E`. 코드는 `T/P/C/S/R/X`와 비충돌.
 
 ### 5.2. 결재 단계 유형 — `ApprovalStepType` (`approval_type` 컬럼)
 | 코드 | enum | 의미 |
@@ -738,7 +855,9 @@ CREATE TABLE kpx_interface (
 | `WP` | 작업허가 |
 | `PM` | 예방점검 |
 | `APR` | 결재 |
-> ⚠️ 권한 모듈(`AppModule`)과 **별개 네임스페이스** — 결재는 채번 `APR` / 권한 `APPROVAL`로 다름.
+| `PUR` | 구매요청 |
+| `STK` | 재고 전표(IN/OUT/MOVE/ADJ 공통, `inventory_history.doc_no`) |
+> `AppModule`(§5.6)과 **이름·코드 일치**(둘 다 ≤3자 짧은 코드). 이전엔 결재가 채번 `APR`/권한 `APPROVAL`로 갈렸으나 통일됨.
 
 ### 5.5. 역할 — `RoleType` (`role.id`)
 | 코드 | 의미 |
@@ -749,8 +868,24 @@ CREATE TABLE kpx_interface (
 | `USER` | 일반사용자 |
 
 ### 5.6. 권한 모듈 — `AppModule` (`role_detail.module_detail`)
-`MDM`, `EQUIPMENT`, `INVENTORY`, `STOCK`, `PM`, `WO`, `WP`, `APPROVAL`, `BOARD`
-> 권한 액션(C/R/U/D)은 모듈별 `role_detail`의 `perm_*` 플래그(`Y`/`N`)로 관리. `A`(자체확정) 권한은 PM/WO/WP를 결재 우회 확정(`status=S`)할 때만 사용.
+
+| 코드 | 한글 라벨(`label()`) | 의미 |
+|---|---|---|
+| `MDM` | 기준정보 설정 | 회사/플랜트/부서/사용자/권한/창고/공통코드 |
+| `EQP` | 설비 마스터 | (구 `EQUIPMENT`) |
+| `INV` | 재고 마스터 | (구 `INVENTORY`) |
+| `STK` | 재고처리 | (구 `STOCK`) 입출고/이동/조정/마감 |
+| `PM` | 예방점검 | |
+| `WO` | 작업지시서 | |
+| `WP` | 작업허가서 | |
+| `APR` | 전자결재 | (구 `APPROVAL`) |
+| `BRD` | 게시판 | (구 `BOARD`) |
+| `PUR` | 구매 | 구매요청·발주·배송·벤더 |
+
+- 권한 액션(C/R/U/D)은 모듈별 `role_detail`의 `perm_*` 플래그(`Y`/`N`)로 관리. `A`(자체확정) 권한은 PM/WO/WP/**PUR(확정)**를 결재 우회 확정(`status=S`)할 때만 사용.
+- **모든 모듈 코드 ≤3자**(채번 접두사로도 그대로 사용 가능). `SeqModule`(§5.4)과 일치.
+- **`label()` 메서드**: 각 enum이 한글 라벨을 보유, FE는 `/api/meta/modules`로 받아 사용(라벨 단일 소스).
+- **V4 마이그레이션 시 기존 데이터 정리**: `UPDATE role_detail SET module_detail='APR' WHERE module_detail='APPROVAL'` 등 5건(APPROVAL/STOCK/EQUIPMENT/INVENTORY/BOARD → APR/STK/EQP/INV/BRD).
 
 ### 5.7. 불리언 플래그 (`Y`/`N`)
 `delete_yn`, `use_yn`, `multi_plant`, `legal_inspect_yn`, `role_detail.perm_c/r/u/d/a` — 이분값이므로 코드가 아닌 `Y`/`N`.

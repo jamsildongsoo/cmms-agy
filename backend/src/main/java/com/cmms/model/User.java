@@ -55,4 +55,17 @@ public class User extends BaseEntity {
 
     @Column(name = "last_login_plant_id", length = 50)
     private String lastLoginPlantId;
+
+    // === 비밀번호 정책 (V3) ===
+    @Column(name = "password_changed_at", nullable = false)
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "must_change_password", nullable = false, columnDefinition = "char(1)")
+    private String mustChangePassword = "N";
+
+    @Column(name = "failed_login_count", nullable = false)
+    private Integer failedLoginCount = 0;
+
+    @Column(name = "account_locked_until")
+    private LocalDateTime accountLockedUntil;
 }

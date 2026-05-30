@@ -6,6 +6,7 @@ import com.cmms.repository.*;
 import com.cmms.security.JwtTokenProvider;
 import com.cmms.util.CodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,15 @@ public class AuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Value("${security.password.expiry-days:90}")
+    private int passwordExpiryDays;
+
+    @Value("${security.password.max-failed-attempts:5}")
+    private int maxFailedAttempts;
+
+    @Value("${security.password.lock-minutes:30}")
+    private int lockMinutes;
+
     @Transactional
     public LoginResponse login(LoginRequest request, String ipAddress) {
         String companyId = CodeUtil.normalize(request.getCompanyId());
@@ -41,17 +51,45 @@ public class AuthService {
                 companyId, request.getId(), "N", "Y")
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 사용 중지된 사용자입니다."));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1) 계정 잠금 확인 (잠금 해제 시각 이전이면 차단)
+        if (user.getAccountLockedUntil() != null && user.getAccountLockedUntil().isAfter(now)) {
             recordLoginHistory(companyId, request.getId(), ipAddress, "FAIL");
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException(
+                    "비밀번호 오류가 누적되어 계정이 잠겼습니다. " + user.getAccountLockedUntil().withNano(0) + " 이후 다시 시도하세요.");
         }
 
-        // 로그인 이력 기록 및 사용자 최종 로그인 정보 갱신
-        user.setLastLoginAt(LocalDateTime.now());
+        // 2) 비밀번호 불일치 → 실패 횟수 누적, 임계치 도달 시 잠금
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            int fails = (user.getFailedLoginCount() == null ? 0 : user.getFailedLoginCount()) + 1;
+            String msg;
+            if (fails >= maxFailedAttempts) {
+                user.setAccountLockedUntil(now.plusMinutes(lockMinutes));
+                user.setFailedLoginCount(0); // 잠금 처리 후 카운터 초기화
+                msg = "비밀번호 " + maxFailedAttempts + "회 오류로 계정이 " + lockMinutes + "분간 잠겼습니다.";
+            } else {
+                user.setFailedLoginCount(fails);
+                msg = "비밀번호가 일치하지 않습니다. (실패 " + fails + "/" + maxFailedAttempts + ")";
+            }
+            userRepository.save(user);
+            recordLoginHistory(companyId, request.getId(), ipAddress, "FAIL");
+            throw new IllegalArgumentException(msg);
+        }
+
+        // 3) 인증 성공 → 실패 카운터·잠금 해제 및 최종 로그인 정보 갱신
+        user.setFailedLoginCount(0);
+        user.setAccountLockedUntil(null);
+        user.setLastLoginAt(now);
         user.setLastLoginIp(ipAddress);
         userRepository.save(user);
 
         recordLoginHistory(companyId, request.getId(), ipAddress, "SUCCESS");
+
+        // 4) 비밀번호 만료/강제변경 판단 (로그인은 허용하되 프론트가 변경 화면을 강제)
+        boolean expired = user.getPasswordChangedAt() != null
+                && user.getPasswordChangedAt().plusDays(passwordExpiryDays).isBefore(now);
+        boolean mustChange = "Y".equalsIgnoreCase(user.getMustChangePassword()) || expired;
 
         // JWT 토큰 생성
         String token = jwtTokenProvider.generateToken(user.getCompanyId(), user.getId());
@@ -65,6 +103,8 @@ public class AuthService {
         response.setDepartmentId(user.getDepartmentId());
         response.setPosition(user.getPosition());
         response.setTitle(user.getTitle());
+        response.setPasswordExpired(expired);
+        response.setMustChangePassword(mustChange);
 
         return response;
     }
@@ -105,6 +145,7 @@ public class AuthService {
         user.setPosition(request.getPosition());
         user.setTitle(request.getTitle());
         user.setUseYn("N"); // 기본 회원가입 시 미승인(N) 상태로 저장 -> 관리자 승인 필요
+        user.setPasswordChangedAt(LocalDateTime.now()); // 만료 시계 시작점(컬럼 NOT NULL)
         user.setCreatedBy(request.getId());
         user.setUpdatedBy(request.getId());
 
@@ -165,6 +206,8 @@ public class AuthService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordChangedAt(LocalDateTime.now()); // 만료 시계 리셋
+        user.setMustChangePassword("N");                // 강제변경 해제
         user.setUpdatedBy(id);
         userRepository.save(user);
     }
