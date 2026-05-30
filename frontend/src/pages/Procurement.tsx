@@ -3,7 +3,7 @@ import axiosInstance from '../api/axios';
 import PrintHeader from '../components/PrintHeader';
 import PrintSignBox from '../components/PrintSignBox';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, Plus, Truck, PackageCheck, X, Trash2, Printer, CheckCircle2, Building2 } from 'lucide-react';
+import { ShoppingCart, Plus, PackageCheck, X, Trash2, Printer } from 'lucide-react';
 
 interface Vendor { id: string; name: string; bizNo?: string; contact?: string; manager?: string; remarks?: string; deleteYn?: string }
 interface Warehouse { id: string; name: string; plantId?: string | null }
