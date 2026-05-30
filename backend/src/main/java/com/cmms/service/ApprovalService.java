@@ -2,7 +2,7 @@ package com.cmms.service;
 
 import com.cmms.constant.ApprovalStepType;
 import com.cmms.constant.DocStatus;
-import com.cmms.constant.SeqModule;
+import com.cmms.security.AppModule;
 import com.cmms.dto.ApprovalDto.*;
 import com.cmms.model.*;
 import com.cmms.repository.*;
@@ -40,6 +40,9 @@ public class ApprovalService {
     @Autowired
     private SequenceService sequenceService;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Transactional
     public Approval submitApproval(String companyId, ApprovalSubmitRequest request, String operator) {
         Approval approval = request.getApproval();
@@ -52,7 +55,10 @@ public class ApprovalService {
         boolean isNew = approval.getId() == null || approval.getId().trim().isEmpty();
         String appNo;
         if (isNew) {
-            appNo = sequenceService.generateNextNo(companyId, SeqModule.APR.code(), "DEPT_ROOT");
+            String drafterDept = userRepository.findByCompanyIdAndId(companyId, operator)
+                    .map(User::getDepartmentId)
+                    .orElse(null);
+            appNo = sequenceService.generateNextNo(companyId, AppModule.APR.name(), drafterDept);
             approval.setId(appNo);
             approval.setDrafterId(operator);
             approval.setCreatedBy(operator);

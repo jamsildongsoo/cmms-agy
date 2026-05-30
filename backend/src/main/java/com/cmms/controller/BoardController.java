@@ -21,27 +21,27 @@ public class BoardController {
     private BoardService boardService;
 
     @GetMapping
-    @PreAuthorize("@perm.check('BOARD','R')")
+    @PreAuthorize("@perm.check('BRD','R')")
     public ResponseEntity<List<Board>> getBoards(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(boardService.getBoards(principal.getCompanyId()));
     }
 
     @GetMapping("/{id}/details")
-    @PreAuthorize("@perm.check('BOARD','R')")
+    @PreAuthorize("@perm.check('BRD','R')")
     public ResponseEntity<BoardDetailResponse> getBoardDetails(
             @PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(boardService.getBoardDetails(principal.getCompanyId(), id));
     }
 
     @PostMapping
-    @PreAuthorize("@perm.check('BOARD','C')")
+    @PreAuthorize("@perm.check('BRD','C')")
     public ResponseEntity<Board> saveBoard(
             @RequestBody Board board, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(boardService.saveBoard(principal.getCompanyId(), board, principal.getUsername()));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@perm.check('BOARD','D')")
+    @PreAuthorize("@perm.check('BRD','D')")
     public ResponseEntity<Void> deleteBoard(
             @PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
         boardService.deleteBoard(principal.getCompanyId(), id, principal.getUsername());
@@ -49,14 +49,14 @@ public class BoardController {
     }
 
     @PostMapping("/comment")
-    @PreAuthorize("@perm.check('BOARD','C')")
+    @PreAuthorize("@perm.check('BRD','C')")
     public ResponseEntity<BoardComment> saveComment(
             @RequestBody BoardComment comment, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(boardService.saveComment(principal.getCompanyId(), comment, principal.getName()));
     }
 
     @DeleteMapping("/comment")
-    @PreAuthorize("@perm.check('BOARD','D')")
+    @PreAuthorize("@perm.check('BRD','D')")
     public ResponseEntity<Void> deleteComment(
             @RequestParam Long boardId, @RequestParam Long commentNo, @AuthenticationPrincipal UserPrincipal principal) {
         boardService.deleteComment(principal.getCompanyId(), boardId, commentNo);

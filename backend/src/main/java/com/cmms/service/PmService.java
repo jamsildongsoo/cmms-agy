@@ -1,7 +1,7 @@
 package com.cmms.service;
 
 import com.cmms.constant.DocStatus;
-import com.cmms.constant.SeqModule;
+import com.cmms.security.AppModule;
 import com.cmms.dto.PmDto.*;
 import com.cmms.model.*;
 import com.cmms.repository.*;
@@ -109,7 +109,7 @@ public class PmService {
 
         boolean isNew = pm.getId() == null || pm.getId().trim().isEmpty();
         if (isNew) {
-            String pmNo = sequenceService.generateNextNo(companyId, SeqModule.PM.code(), pm.getDepartmentId());
+            String pmNo = sequenceService.generateNextNo(companyId, AppModule.PM.name(), pm.getDepartmentId());
             pm.setId(pmNo);
             pm.setCreatedBy(operator);
         }

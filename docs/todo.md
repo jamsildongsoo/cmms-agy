@@ -41,7 +41,7 @@
   - `controller/ApprovalController.java` `'APPROVAL'` × 5
   - `controller/InventoryTransactionController.java` `'STOCK'` × 4
   - `controller/BoardController.java` `'BOARD'` × 6
-- **`SeqModule.java:6`** 주석에서 "결재는 여기선 APR, 권한에선 APPROVAL" 분기 표현 제거(이제 일치).
+- **`SeqModule.java` 자체 삭제** — AppModule이 채번 enum까지 겸하므로 SeqModule 중복 enum 제거. 호출부 4곳(`PmService:112`, `WorkPermitService:40`, `WorkOrderService:54`, `ApprovalService:55`) `SeqModule.X.code()` → `AppModule.X.name()` 치환.
 - **신규 모듈 메타 엔드포인트**: `/api/meta/modules` → `[{code,label}]` (FE 라벨맵 대체).
 - **FE 정리**: `frontend/src/pages/MdmLayout.tsx:705~712` 라벨맵 제거 → BE meta 사용.
 

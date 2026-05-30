@@ -20,38 +20,38 @@ public class ApprovalController {
     private ApprovalService approvalService;
 
     @PostMapping("/submit")
-    @PreAuthorize("@perm.check('APPROVAL','C')")
+    @PreAuthorize("@perm.check('APR','C')")
     public ResponseEntity<Approval> submitApproval(
             @RequestBody ApprovalSubmitRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.submitApproval(principal.getCompanyId(), request, principal.getUsername()));
     }
 
     @GetMapping("/sent")
-    @PreAuthorize("@perm.check('APPROVAL','R')")
+    @PreAuthorize("@perm.check('APR','R')")
     public ResponseEntity<List<Approval>> getSentApprovals(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.getSentApprovals(principal.getCompanyId(), principal.getUsername()));
     }
 
     @GetMapping("/pending")
-    @PreAuthorize("@perm.check('APPROVAL','R')")
+    @PreAuthorize("@perm.check('APR','R')")
     public ResponseEntity<List<Approval>> getPendingApprovals(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.getPendingApprovals(principal.getCompanyId(), principal.getUsername()));
     }
 
     @GetMapping("/referenced")
-    @PreAuthorize("@perm.check('APPROVAL','R')")
+    @PreAuthorize("@perm.check('APR','R')")
     public ResponseEntity<List<Approval>> getReferencedApprovals(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.getReferencedApprovals(principal.getCompanyId(), principal.getUsername()));
     }
 
     @GetMapping("/processed")
-    @PreAuthorize("@perm.check('APPROVAL','R')")
+    @PreAuthorize("@perm.check('APR','R')")
     public ResponseEntity<List<Approval>> getProcessedApprovals(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.getProcessedApprovals(principal.getCompanyId(), principal.getUsername()));
     }
 
     @GetMapping("/{id}/details")
-    @PreAuthorize("@perm.check('APPROVAL','R')")
+    @PreAuthorize("@perm.check('APR','R')")
     public ResponseEntity<ApprovalDetailResponse> getApprovalDetails(
             @PathVariable String id, @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(approvalService.getApprovalDetails(principal.getCompanyId(), id));

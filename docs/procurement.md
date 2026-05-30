@@ -49,7 +49,7 @@
 7. **입고/출고 = 히스토리 기반(GoodsReceipt 테이블 없음)**. 입고 시 `proc_status=I`(수량 무관). 종료 = PR `proc_status=E` — 입고 모달 '종료' 체크 또는 목록 **독립 종료 액션**(0 입고 PR도 종료 가능).
 8. **전표번호 docNo(단일 STK) 신설** — `inventory_history`에 `doc_no` 컬럼 추가, 이벤트마다 `SequenceService` 채번. **GR/GI 구분 없음**(입고/출고는 `txTypeCode`). 라인은 docNo 그룹 내 표시 순번, `historyNo`(전역 PK)는 비노출. 이력 화면 `docNo` 검색·그룹, PR 단위 `refNo` 필터.
 9. **출력 수기결재칸 = `PrintSignBox` 신설** — 기존 `Approval` 결재박스 형식 차용(칸당 ~96px), **2열×4행(8칸)·라벨 없는 빈 수기 서명칸**. 구매요청서/입고증/출고증 공통. **`PrintHeader`는 회사코드→회사명 표시로 변경**(인증/스토어에 `companyName` 추가; 기존 사용처 Inventory/Equipment 자동 반영). **기존 자체 헤더(WO/WP/PM/Approval/InventoryTransaction 목록)는 이번 범위 외 — 기존 유지**(전사 헤더 통일은 별도 작업).
-10. **권한 모듈 상수화 + 2축(모듈×액션)**: `AppModule`에 `PUR` 추가(단일 소스 — `@perm.check` + role_detail 시드 공유). 권한은 **모듈 × 액션(C/R/U/D/A)** 2축(`role_detail`). 매핑은 아래 [권한 매핑] 표 참조. 핵심: **재고 반영 처리(구매 입고 포함, 입출고/이동/조정/마감)=`STK` C, 현황·이력 조회=`STK` R**로 조회/처리가 액션으로 구분됨. 채번 `SeqModule`(AppModule과 별개 네임스페이스) `PUR`·`STK` 추가. **구매오더(PO) 문서 없음.**
+10. **권한 모듈 상수화 + 2축(모듈×액션)**: `AppModule`에 `PUR` 추가(단일 소스 — `@perm.check` + role_detail 시드 공유). 권한은 **모듈 × 액션(C/R/U/D/A)** 2축(`role_detail`). 매핑은 아래 [권한 매핑] 표 참조. 핵심: **재고 반영 처리(구매 입고 포함, 입출고/이동/조정/마감)=`STK` C, 현황·이력 조회=`STK` R**로 조회/처리가 액션으로 구분됨. 채번도 `AppModule`을 그대로 사용(별도 SeqModule 없음). **구매오더(PO) 문서 없음.**
 11. **입고 처리 = 구매요청 화면(`Procurement.tsx`) 내 모달(PR 기준)**. 입고 모달은 구매 화면에 있으나 **입고 endpoint 권한은 `STK` C**(재고 반영이므로 수동 입출고와 동일 통제), PR 조회는 `PUR` R + 플랜트 스코프. 기존 `InventoryTransaction.tsx`는 PR 없는 수동 입출고/이동/조정 + 현황/이력 전용. 둘 다 같은 `InventoryHistory` 원장에 STK 전표로 기록.
 12. **구매요청유형 = 공통코드(CodeGroup/CodeItem) 재사용** — 코드그룹 `PR_TYPE`을 `company_id='SYSTEM'`(전 회사 공유, 기존 `*_TYPE`과 동일)로 시드. 아이템(정렬순): `NORMAL`일반(10)/`ROUTINE`경상(20)/`PLANNED_PM`계획예방정비(30)/`URGENT`긴급(40)/`ETC`기타(99). `PurchaseRequest.requestType`가 코드아이템 `id` 참조(기존 `Inventory.itemTypeCode` 패턴). 관리=기준정보 설정>공통코드(`CodeManager`). V4 1회 `INSERT`(신규 회사 추가 시드 불필요).
 13. **메뉴 배치**: '업무 트랜잭션' 그룹에 단일 '구매' 항목, `Procurement.tsx` 내부 탭으로 **구매요청 / 벤더 관리** 구성(벤더는 업무 성격이라 기준정보 설정 아님). 기준정보 설정(MDM)엔 벤더 없음.
@@ -83,7 +83,7 @@
 - **신규 `Vendor`** + `VendorId(companyId, id)`: `name`(NOT NULL), `bizNo`, `contact`, `manager`, `remarks`.
 - **신규 `PurchaseRequest`** + `PurchaseRequestId(companyId, id)`: `id`=채번(`PUR-yyyyMM-####`), `plantId`(NOT NULL), `warehouseId`, `requesterId`, `requestDate`, `requestType`(공통코드 `PR_TYPE` 참조), `vendorId`(nullable), `orderDate`, `etaDate`(예정도착일), `shipStartDate`, `status`(CHAR(1), `DocStatus`; 기본 `T`), `procStatus`(`proc_status` CHAR(1), nullable), `remarks`.
 - **신규 `PurchaseRequestItem`** + `PurchaseRequestItemId(companyId, requestId, lineNo)`: `inventoryId`, `qty`(불변), `unit`, `receivedQty`(0; 입고 시 누적), `remarks`.
-- **`SeqModule`**: `PUR`·`STK` 추가. **`AppModule`**: 신규 `PUR` 추가 + 기존 `APPROVAL`/`STOCK`/`EQUIPMENT`/`INVENTORY`/`BOARD` → **`APR`/`STK`/`EQP`/`INV`/`BRD`로 단축**(전 모듈 ≤3자) + **`label()` 한글 라벨** 메서드 추가(FE 라벨맵 대체). **`DocStatus`**: 절차상태 `O`(ORDERED)/`D`(SHIPPING)/`I`(RECEIVED)/`E`(CLOSED) 추가(문서상태 T/S는 재사용 — 신규 enum 없음).
+- **`AppModule`**: 신규 `PUR`/`STK` 추가 + 기존 `APPROVAL`/`STOCK`/`EQUIPMENT`/`INVENTORY`/`BOARD` → **`APR`/`STK`/`EQP`/`INV`/`BRD`로 단축**(전 모듈 ≤3자) + **`label()` 한글 라벨** 메서드 추가(FE 라벨맵 대체). **채번도 같은 enum 사용**(`SeqModule` 제거됨). **`DocStatus`**: 절차상태 `O`(ORDERED)/`D`(SHIPPING)/`I`(RECEIVED)/`E`(CLOSED) 추가(문서상태 T/S는 재사용 — 신규 enum 없음).
 
 ## DB 마이그레이션 — `backend/src/main/resources/db/migration/V4__procurement.sql`
 
@@ -101,7 +101,7 @@
 - **DTO**: `dto/VendorDto.java`, `dto/PurchaseRequestDto.java`(`SaveRequest{header,List<ItemLine>}`, `OrderRequest{requestId,vendorId,orderDate,etaDate}`, `ReceiveRequest{requestId,close(bool),List<ReceiveLine>{lineNo,qty,unitPrice}}`, 절차상태 전이).
 - **`VendorService`+`VendorController`** (`/api/vendors`, `@perm.check('PUR',...)`): 마스터 CRUD 패턴 복제(벤더는 구매 업무 도메인).
 - **`ProcurementService`+`ProcurementController`** (`/api/procurement`):
-  - `createRequest`(저장 `status=T`)/`confirmRequest`(확정 `status=S`, 현장; `checkSave('PUR','S')` → C+A): `SequenceService.generateNextNo(companyId, SeqModule.PUR.code(), requester.getDepartmentId())`(부서 없으면 fallback `DEPT_ROOT`); plantId 컨텍스트 주입(클라이언트 입력 금지).
+  - `createRequest`(저장 `status=T`)/`confirmRequest`(확정 `status=S`, 현장; `checkSave('PUR','S')` → C+A): `SequenceService.generateNextNo(companyId, AppModule.PUR.name(), requester.getDepartmentId())`(부서 없으면 fallback `DEPT_ROOT`); plantId 컨텍스트 주입(클라이언트 입력 금지).
   - `placeOrder`(→`proc_status=O`)/`startShipping`(→`proc_status=D`)(구매자): 벤더·발주일·예정도착일·배송 기록.
   - `receive`(현장, `@perm.check('STOCK','C')` — 재고 반영): STK 전표번호 채번 → 라인별 `InventoryTransactionService.processTransactions()`에 `TxItem{txTypeCode:"IN", warehouseId(=PR), inventoryId, qty, unitPrice, docNo, refModule:"PUR", refNo:requestId}` 위임 → PR 라인 `receivedQty` 누적 → `proc_status=I`. **수량 과소/초과 판정 없음**. `ReceiveRequest.close=true`면 입고 후 곧바로 `proc_status=E`. (그 외 `ProcurementController` 엔드포인트는 `PUR` 권한.)
   - `closeRequest`(→`proc_status=E`, 현장; `@perm.check('PUR','U')`): 잔여 닫고 종료. **독립 액션** — 입고가 한 번도 없는(미입고) PR도 호출 가능, 입고 모달의 `close` 플래그와 동일 경로.

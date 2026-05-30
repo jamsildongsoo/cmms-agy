@@ -39,6 +39,6 @@ public class SequenceService {
         generator.setUpdatedBy("SYSTEM");
         sequenceGeneratorRepository.save(generator);
 
-        return String.format("%s-%s-%04d", refModule, yearMonth, nextSeq);
+        return String.format("%s-%s-%s-%04d", refModule, deptId, yearMonth, nextSeq);
     }
 }

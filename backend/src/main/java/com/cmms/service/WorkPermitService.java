@@ -1,6 +1,6 @@
 package com.cmms.service;
 
-import com.cmms.constant.SeqModule;
+import com.cmms.security.AppModule;
 import com.cmms.model.WorkPermit;
 import com.cmms.model.WorkPermitId;
 import com.cmms.repository.WorkPermitRepository;
@@ -37,7 +37,7 @@ public class WorkPermitService {
 
         boolean isNew = permit.getId() == null || permit.getId().trim().isEmpty();
         if (isNew) {
-            String wpNo = sequenceService.generateNextNo(companyId, SeqModule.WP.code(), permit.getDepartmentId());
+            String wpNo = sequenceService.generateNextNo(companyId, AppModule.WP.name(), permit.getDepartmentId());
             permit.setId(wpNo);
             permit.setCreatedBy(operator);
         }

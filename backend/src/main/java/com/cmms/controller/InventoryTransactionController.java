@@ -29,19 +29,19 @@ public class InventoryTransactionController {
     private InventoryHistoryRepository inventoryHistoryRepository;
 
     @GetMapping("/status")
-    @PreAuthorize("@perm.check('STOCK','R')")
+    @PreAuthorize("@perm.check('STK','R')")
     public ResponseEntity<List<InventoryStatus>> getInventoryStatus(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(inventoryStatusRepository.findByCompanyIdAndDeleteYn(principal.getCompanyId(), "N"));
     }
 
     @GetMapping("/history")
-    @PreAuthorize("@perm.check('STOCK','R')")
+    @PreAuthorize("@perm.check('STK','R')")
     public ResponseEntity<List<InventoryHistory>> getInventoryHistory(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(inventoryHistoryRepository.findByCompanyIdAndDeleteYn(principal.getCompanyId(), "N"));
     }
 
     @PostMapping
-    @PreAuthorize("@perm.check('STOCK','C')")
+    @PreAuthorize("@perm.check('STK','C')")
     public ResponseEntity<Void> processTransactions(
             @RequestBody InventoryTxRequest request, @AuthenticationPrincipal UserPrincipal principal) {
         inventoryTransactionService.processTransactions(principal.getCompanyId(), request, principal.getUsername());
@@ -49,7 +49,7 @@ public class InventoryTransactionController {
     }
 
     @PostMapping("/close")
-    @PreAuthorize("@perm.check('STOCK','C')")
+    @PreAuthorize("@perm.check('STK','C')")
     public ResponseEntity<Void> closeMonth(
             @RequestParam String closingYm, @AuthenticationPrincipal UserPrincipal principal) {
         inventoryTransactionService.closeMonth(principal.getCompanyId(), closingYm, principal.getUsername());

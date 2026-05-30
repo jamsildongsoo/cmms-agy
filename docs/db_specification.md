@@ -31,7 +31,7 @@
     *   회사·부서는 카운터 분리 키이지만, **회사는 문자열에 포함하지 않음**(엔티티 PK에 이미 있고 UI에 표시되므로 중복 정보).
     *   **부서는 문자열에 포함**(같은 회사·플랜트에서 다른 부서가 같은 달 동일 모듈 생성 시 PK 충돌 방지).
     *   부서 = 처리자 부서(WO/WP/PM=담당, APR=기안자, PUR=요청자, STK=조작자). 사용자 부서 없으면 fallback `DEPT_ROOT`.
-*   **모듈 코드** = `SeqModule` enum(§5.4). **2~3자**(WO/WP/PM/APR/PUR/STK).
+*   **모듈 코드** = `AppModule` enum(§5.6, 채번 가능 모듈은 §5.4 표 참조). **2~3자**(WO/WP/PM/APR/PUR/STK).
 *   **순번** = 4자리 0채움(`%04d`). 매월 0001부터 리셋.
 *   **컬럼 길이**: id·ref_no 컬럼 VARCHAR(50). 실제 코드 길이 짧아 50자 안에 들어옴(부서코드 ≤30자 권장).
 
@@ -848,7 +848,9 @@ CREATE TABLE purchase_request_item (
 > "현재 차례"는 저장하지 않고 **단계 순서 + 직전 단계 승인 여부로 계산**. 기안(`D`) 단계는 상신 시 `Y`로 기록.
 > ⚠️ **전환 예정(미적용)**: 현재 코드/DB는 과거 값(`T`/`P`/`A`/`R`)을 사용 중이며, 위 `빈칸/Y/N`은 합의된 목표다(워크플로 로직 재작성 + `V4` 마이그레이션 필요). 적용 전까지 이 줄을 기준으로 혼동 주의.
 
-### 5.4. 채번 모듈 — `SeqModule` (문서번호 접두사 = `sequence_generator.ref_module`)
+### 5.4. 채번 모듈 (문서번호 접두사 = `sequence_generator.ref_module`)
+채번에는 `AppModule`(§5.6)을 그대로 사용한다 — 별도 enum 없음(과거 `SeqModule`은 제거됨).
+채번 가능한 모듈 (그 외 MDM/EQP/INV/BRD는 채번 대상 아님):
 | 코드 | 의미 |
 |---|---|
 | `WO` | 작업지시 |
@@ -857,7 +859,7 @@ CREATE TABLE purchase_request_item (
 | `APR` | 결재 |
 | `PUR` | 구매요청 |
 | `STK` | 재고 전표(IN/OUT/MOVE/ADJ 공통, `inventory_history.doc_no`) |
-> `AppModule`(§5.6)과 **이름·코드 일치**(둘 다 ≤3자 짧은 코드). 이전엔 결재가 채번 `APR`/권한 `APPROVAL`로 갈렸으나 통일됨.
+> 호출: `SequenceService.generateNextNo(companyId, AppModule.WO.name(), departmentId)`.
 
 ### 5.5. 역할 — `RoleType` (`role.id`)
 | 코드 | 의미 |
@@ -883,7 +885,7 @@ CREATE TABLE purchase_request_item (
 | `PUR` | 구매 | 구매요청·발주·배송·벤더 |
 
 - 권한 액션(C/R/U/D)은 모듈별 `role_detail`의 `perm_*` 플래그(`Y`/`N`)로 관리. `A`(자체확정) 권한은 PM/WO/WP/**PUR(확정)**를 결재 우회 확정(`status=S`)할 때만 사용.
-- **모든 모듈 코드 ≤3자**(채번 접두사로도 그대로 사용 가능). `SeqModule`(§5.4)과 일치.
+- **모든 모듈 코드 ≤3자**(채번 접두사로도 그대로 사용 — 별도 채번 enum 없음). 채번 호출: `SequenceService.generateNextNo(companyId, AppModule.X.name(), departmentId)`.
 - **`label()` 메서드**: 각 enum이 한글 라벨을 보유, FE는 `/api/meta/modules`로 받아 사용(라벨 단일 소스).
 - **V4 마이그레이션 시 기존 데이터 정리**: `UPDATE role_detail SET module_detail='APR' WHERE module_detail='APPROVAL'` 등 5건(APPROVAL/STOCK/EQUIPMENT/INVENTORY/BOARD → APR/STK/EQP/INV/BRD).
 
