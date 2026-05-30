@@ -25,6 +25,7 @@ interface InventoryHistoryModel {
   userId: string;
   refNo: string | null;
   refModule: string | null;
+  docNo: string | null;  // STK 전표번호
 }
 
 interface TxGridItem {
@@ -385,7 +386,7 @@ export default function InventoryTransaction() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-900 text-slate-400 border-b border-slate-800 select-none print:bg-slate-100 print:text-slate-800 print:border-slate-300">
-                  <th className="p-3 font-semibold">이력번호</th>
+                  <th className="p-3 font-semibold">전표번호</th>
                   <th className="p-3 font-semibold">창고명</th>
                   <th className="p-3 font-semibold">자재코드</th>
                   <th className="p-3 font-semibold">자재명</th>
@@ -408,7 +409,7 @@ export default function InventoryTransaction() {
                     const wh = warehouses.find(w => w.id === h.warehouseId);
                     return (
                       <tr key={h.historyNo} className="border-b border-slate-900 hover:bg-slate-900/30 text-slate-300 print:border-slate-200 print:text-slate-800 print:hover:bg-transparent">
-                        <td className="p-3 font-mono text-slate-500">{h.historyNo}</td>
+                        <td className="p-3 font-mono text-slate-300 print:text-slate-800" title={`이력번호 ${h.historyNo}`}>{h.docNo || `(NO.${h.historyNo})`}</td>
                         <td className="p-3">{wh?.name || h.warehouseId}</td>
                         <td className="p-3 font-mono text-slate-400">{h.inventoryId}</td>
                         <td className="p-3">{inv?.name || '-'}</td>
@@ -653,9 +654,13 @@ export default function InventoryTransaction() {
               {/* 전표 양식 디자인 */}
               <div className="text-center mb-8 border-b-2 border-slate-800 pb-4">
                 <h1 className="text-2xl font-extrabold tracking-widest text-slate-900 uppercase">
-                  {selectedSlip.txTypeCode.includes('IN') ? '물 품 입 고 전 표' : '물 품 출 고 전 표'}
+                  {selectedSlip.txTypeCode === 'IN' ? '입 고 증'
+                    : selectedSlip.txTypeCode === 'OUT' ? '출 고 증'
+                    : selectedSlip.txTypeCode === 'ADJ' ? '재 고 조 정 전 표'
+                    : '재 고 이 동 전 표'}
                 </h1>
-                <span className="text-[10px] text-slate-500 font-mono block mt-1">이력번호: NO.{selectedSlip.historyNo}</span>
+                <span className="text-[11px] text-slate-700 font-mono block mt-1 font-bold">전표번호: {selectedSlip.docNo || '-'}</span>
+                <span className="text-[9px] text-slate-500 font-mono block">이력 NO.{selectedSlip.historyNo}</span>
               </div>
 
               <div className="border border-slate-700 p-4 rounded-xl space-y-4 print:border-slate-400 print:rounded-none">
@@ -722,7 +727,9 @@ export default function InventoryTransaction() {
 
                 {selectedSlip.refNo && (
                   <div className="bg-slate-950 p-2.5 rounded font-mono text-[10px] text-slate-500 border border-slate-900 print:bg-slate-50 print:border-slate-200">
-                    * 연계 이동출고/입고 참조번호: {selectedSlip.refNo} ({selectedSlip.refModule})
+                    {selectedSlip.refModule === 'PUR'
+                      ? <>* 구매요청 출처: <strong className="text-slate-300 print:text-slate-800">{selectedSlip.refNo}</strong></>
+                      : <>* 연계 이동 참조: {selectedSlip.refNo} ({selectedSlip.refModule})</>}
                   </div>
                 )}
               </div>
@@ -755,6 +762,28 @@ export default function InventoryTransaction() {
               >
                 닫기
               </button>
+              {/* 구매 입고 전표(docNo+refModule=PUR+txType=IN)일 때만 역분개 버튼 */}
+              {selectedSlip.txTypeCode === 'IN' && selectedSlip.refModule === 'PUR' && selectedSlip.docNo && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm(`전표 ${selectedSlip.docNo}을(를) 역분개로 취소합니다.\n이 입고 이후 동일 품목·창고에 거래가 없을 때만 가능합니다. 진행할까요?`)) return;
+                    try {
+                      await axiosInstance.post(`/procurement/receipts/cancel/${encodeURIComponent(selectedSlip.docNo!)}`);
+                      alert('입고가 역분개로 취소되었습니다.');
+                      setIsSlipOpen(false);
+                      // 이력 갱신
+                      const res = await axiosInstance.get('/inventory-tx/history');
+                      setHistoryList(res.data || []);
+                    } catch (e: any) {
+                      alert(e.response?.data?.message || '취소 실패');
+                    }
+                  }}
+                  className="bg-rose-700 hover:bg-rose-600 text-white rounded-lg py-2 px-4 text-xs font-semibold cursor-pointer border-0"
+                >
+                  입고 취소(역분개)
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => window.print()}
