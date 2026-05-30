@@ -249,7 +249,7 @@
 *   **'이 요청 종료' 체크박스**: 체크 시 입고 후 곧바로 `proc_status='E'`.
 *   확정 시 STK 전표(docNo) 채번 → 재고 IN + `receivedQty` 누적 + `proc_status='I'`.
 
-**입고 취소(역분개)**: 전표(docNo) 단위로 호출. **그 입고 이후 동일 (창고+품목)에 다른 transaction 있으면 비활성**(서버도 거부).
+**전표 취소(역분개) — IN/OUT 둘 다**: Slip 인쇄 모달(`InventoryTransaction.tsx`)에서 IN/OUT 전표일 때 footer에 '입고/출고 취소(역분개)' 버튼 노출. **공통 조건: 그 거래 이후 동일 (창고, 품목)에 다른 transaction 있으면 서버 거부** → 에러 메시지로 안내. `POST /api/procurement/slips/cancel/{docNo}` 호출.
 
 **독립 '종료' 액션**: 입고가 한 번도 없는 PR도 닫을 수 있는 별도 액션(`proc_status='E'`).
 

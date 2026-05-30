@@ -698,9 +698,10 @@ CREATE TABLE purchase_request_item (
 );
 ```
 
-**입고 처리·취소(역분개) 정책:**
+**입고 처리·전표 취소(역분개) 정책:**
 - 입고 = 확정(`status='S'`) PR만 대상. `InventoryTransactionService.processTransactions()`에 IN 위임(`doc_no`=STK 채번, `ref_module='PUR'`/`ref_no=PR번호`) → 재고 반영 + 라인 `received_qty` 누적 + `proc_status='I'`.
-- 입고 취소 = 같은 `doc_no`로 OUT 역분개 + `received_qty` 차감. **조건: 그 입고 이후 동일 `(company_id, warehouse_id, inventory_id)`에 어떤 transaction(IN/OUT/MOVE/ADJ)도 없을 때만 허용**(이동평균 손상 방지). 위반 시 명시적 에러.
+- **전표 취소(역분개) — IN/OUT 둘 다 지원**: 같은 `doc_no`로 반대 거래 생성 (IN↔OUT). IN 취소 시 `received_qty` 차감(refModule=PUR일 때), OUT 취소 시 원본 단가(`unit_price`)로 정확 복원.
+- **공통 조건: 그 거래 이후 동일 `(company_id, warehouse_id, inventory_id)`에 어떤 transaction(IN/OUT/MOVE/ADJ)도 없을 때만 허용**(이동평균 손상 방지). 위반 시 명시적 에러. MOVE/ADJ 취소는 페어링·정합성 이슈로 미지원.
 - 종료(`proc_status='E'`): 입고 모달 '종료' 체크 또는 독립 종료 액션(0 입고 PR도 종료 가능).
 
 **플랜트 스코핑 (warehouse.plant_id):**

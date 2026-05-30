@@ -29,7 +29,7 @@
 
 ## 구매(Procurement) 도입 + 부수 정리 — 신규 기능 (HIGH)
 
-> 설계 단일 소스: `docs/procurement.md`. PRD/DB명세/UI명세 분산 정리됨.
+> 설계 단일 소스: `docs/product_requirements.md` 2.4·2.0 + `docs/db_specification.md` §1.4·§2.7·§5.1·§5.4·§5.6 + `docs/ui_specification.md` /procurement·§3.6~3.9.
 
 ### [ ] P1. AppModule 코드 ≤3자 통일 + 한글 `label()` 추가
 
