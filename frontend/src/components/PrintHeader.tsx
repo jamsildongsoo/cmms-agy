@@ -21,7 +21,7 @@ export default function PrintHeader({ title, subtitle }: PrintHeaderProps) {
           {subtitle && <p className="text-xs text-slate-600 mt-0.5">{subtitle}</p>}
         </div>
         <div className="text-right text-[10px] space-y-0.5 text-slate-600 font-semibold">
-          <div>회사: <span className="text-slate-900 font-bold">{user?.companyId || 'CMMS'}</span></div>
+          <div>회사: <span className="text-slate-900 font-bold">{user?.companyName || user?.companyId || 'CMMS'}</span></div>
           <div>출력자: <span className="text-slate-900 font-bold">{user?.name || '-'}</span></div>
           <div>출력일시: <span className="text-slate-900 font-bold">{now}</span></div>
         </div>

@@ -1,11 +1,25 @@
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { LogOut, Clock, RefreshCw, UserCheck, Sun, Moon } from 'lucide-react';
+import axiosInstance from '../api/axios';
+import { LogOut, Clock, RefreshCw, UserCheck, Sun, Moon, Building2 } from 'lucide-react';
+
+interface PlantOption { id: string; name: string }
 
 export default function Header() {
-  const { user, timeRemaining, extendSession, logout } = useAuthStore();
+  const { user, timeRemaining, extendSession, logout, activePlantId, setActivePlantId } = useAuthStore();
   const isLightMode = useThemeStore((s) => s.isLight);
   const toggleTheme = useThemeStore((s) => s.toggle);
+
+  // 멀티 권한자만 플랜트 셀렉터 — 플랜트 목록 로드
+  const [plants, setPlants] = useState<PlantOption[]>([]);
+  useEffect(() => {
+    if (user?.multiPlant === 'Y') {
+      axiosInstance.get('/mdm/plants')
+        .then(res => setPlants(res.data || []))
+        .catch(() => setPlants([]));
+    }
+  }, [user?.multiPlant]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -36,6 +50,27 @@ export default function Header() {
           <span className="px-1.5 py-0.5 rounded bg-blue-950 text-blue-400 text-[9px] font-bold tracking-wider uppercase">
             {user?.roleId}
           </span>
+        </div>
+
+        {/* 플랜트: 멀티는 셀렉터, 비멀티는 라벨 */}
+        <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-400 ml-3">
+          <Building2 size={13} className="text-emerald-500" />
+          {user?.multiPlant === 'Y' ? (
+            <select
+              value={activePlantId || ''}
+              onChange={(e) => setActivePlantId(e.target.value || null)}
+              className="bg-transparent text-slate-200 outline-none border-0 font-semibold cursor-pointer"
+            >
+              <option value="">전체총괄</option>
+              {plants.map(p => (
+                <option key={p.id} value={p.id}>{p.id} — {p.name}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="font-semibold text-slate-200">
+              {user?.lastLoginPlantId || '전체'}
+            </span>
+          )}
         </div>
       </div>
 

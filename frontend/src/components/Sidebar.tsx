@@ -1,6 +1,6 @@
 import {
   Wrench, Package, ClipboardList, FileSignature,
-  Layers, Bell, User, LayoutDashboard, ShieldCheck
+  Layers, Bell, User, LayoutDashboard, ShieldCheck, ShoppingCart
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -28,8 +28,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         { id: 'pm', label: '예방점검 기록', icon: ClipboardList },
         { id: 'wo', label: '작업지시서', icon: ClipboardList },
         { id: 'wp', label: '작업허가서 (Permit)', icon: FileSignature },
+        { id: 'procurement', label: '구매 (Procurement)', icon: ShoppingCart },
         { id: 'stock', label: '재고 입출고/이동', icon: Layers }
-      ] 
+      ]
     },
     { 
       category: '결재 & 게시판', 

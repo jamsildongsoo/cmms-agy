@@ -11,6 +11,7 @@ import PreventiveMaintenance from './PreventiveMaintenance';
 import WorkOrder from './WorkOrder';
 import WorkPermit from './WorkPermit';
 import InventoryTransaction from './InventoryTransaction';
+import Procurement from './Procurement';
 import Approval from './Approval';
 import Board from './Board';
 import SystemAdmin from './SystemAdmin';
@@ -72,6 +73,8 @@ export default function Dashboard() {
         return <WorkPermit />;
       case 'stock':
         return <InventoryTransaction />;
+      case 'procurement':
+        return <Procurement />;
       case 'approval':
         return <Approval />;
       case 'board':

@@ -4,13 +4,16 @@ import axiosInstance from '../api/axios';
 
 interface User {
   companyId: string;
+  companyName: string;          // PrintHeader 표시용
   id: string;
   name: string;
   roleId: string;
   departmentId: string | null;
   position: string | null;
   title: string | null;
-  mustChangePassword?: boolean; // 만료 또는 관리자 초기비번 → 변경 권고
+  lastLoginPlantId: string | null;  // 지정 플랜트(관리자 지정 또는 로그인 자동매핑)
+  multiPlant: 'Y' | 'N';            // 역할에서 resolve, 셀렉터 표시 여부
+  mustChangePassword?: boolean;
   passwordExpired?: boolean;
 }
 
@@ -23,11 +26,13 @@ interface AuthState {
   timeRemaining: number;
   timerId: any | null;
   error: string | null;
+  activePlantId: string | null;  // 멀티 사용자가 선택한 활성 플랜트(null=전체)
   login: (companyId: string, id: string, password: string) => Promise<boolean>;
   logout: () => void;
   signUp: (data: any) => Promise<void>;
   extendSession: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
+  setActivePlantId: (plantId: string | null) => void;
   decrementTimer: () => void;
   setError: (msg: string | null) => void;
   init: () => void;
@@ -42,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
       timeRemaining: 0,
       timerId: null,
       error: null,
+      activePlantId: null,
 
       login: async (companyId, id, password) => {
         try {
@@ -51,12 +57,15 @@ export const useAuthStore = create<AuthState>()(
 
           const user: User = {
             companyId: data.companyId,
+            companyName: data.companyName || data.companyId,
             id: data.id,
             name: data.name,
             roleId: data.roleId,
             departmentId: data.departmentId,
             position: data.position,
             title: data.title,
+            lastLoginPlantId: data.lastLoginPlantId,
+            multiPlant: data.multiPlant === 'Y' ? 'Y' : 'N',
             mustChangePassword: data.mustChangePassword,
             passwordExpired: data.passwordExpired,
           };
@@ -79,6 +88,7 @@ export const useAuthStore = create<AuthState>()(
             expiresAt: Date.now() + SESSION_MS,
             timeRemaining: 1800,
             timerId,
+            activePlantId: data.lastLoginPlantId, // 로그인 시 lastLoginPlantId로 초기화
           });
 
           return true;
@@ -150,6 +160,13 @@ export const useAuthStore = create<AuthState>()(
             ...updatedData
           }
         });
+      },
+
+      setActivePlantId: (plantId) => {
+        // 멀티 사용자만 활성 플랜트 변경 가능
+        const { user } = get();
+        if (!user || user.multiPlant !== 'Y') return;
+        set({ activePlantId: plantId });
       },
 
       decrementTimer: () => {
