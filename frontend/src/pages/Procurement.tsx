@@ -520,13 +520,13 @@ export default function Procurement() {
         </div>
       )}
 
-      {/* 입력 공통 클래스 — MdmLayout 등 다른 화면과 동일 스타일 */}
+      {/* 입력 공통 클래스 — Tailwind CSS 변수 사용으로 라이트/다크 모드 자동 반전 */}
       <style>{`
         .input {
           width: 100%;
-          background-color: rgb(15 23 42);
-          border: 1px solid rgb(30 41 59);
-          color: rgb(226 232 240);
+          background-color: var(--color-slate-900);
+          border: 1px solid var(--color-slate-800);
+          color: var(--color-slate-200);
           font-size: 0.75rem;
           line-height: 1rem;
           border-radius: 0.5rem;
@@ -534,7 +534,7 @@ export default function Procurement() {
           outline: none;
           transition: border-color 0.15s ease;
         }
-        .input:focus { border-color: rgb(59 130 246); }
+        .input:focus { border-color: var(--color-blue-500); }
         .input:disabled { opacity: 0.5; }
       `}</style>
     </div>
