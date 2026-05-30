@@ -34,6 +34,12 @@ public class AuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private PlantRepository plantRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
     @Value("${security.password.expiry-days:90}")
     private int passwordExpiryDays;
 
@@ -82,6 +88,15 @@ public class AuthService {
         user.setAccountLockedUntil(null);
         user.setLastLoginAt(now);
         user.setLastLoginIp(ipAddress);
+
+        // 플랜트 자동 해소: lastLoginPlantId가 null이면 회사 첫 활성 플랜트 매핑·기록
+        // (관리자가 MdmService.updateUser로 명시 지정한 값이 있으면 건드리지 않음 = 우선)
+        if (user.getLastLoginPlantId() == null) {
+            plantRepository.findByCompanyIdAndDeleteYn(companyId, "N").stream()
+                    .sorted((a, b) -> a.getId().compareTo(b.getId()))
+                    .findFirst()
+                    .ifPresent(p -> user.setLastLoginPlantId(p.getId()));
+        }
         userRepository.save(user);
 
         recordLoginHistory(companyId, request.getId(), ipAddress, "SUCCESS");
@@ -94,15 +109,27 @@ public class AuthService {
         // JWT 토큰 생성
         String token = jwtTokenProvider.generateToken(user.getCompanyId(), user.getId());
 
+        // 회사명 + 멀티플랜트 여부 조회
+        String companyName = companyRepository.findById(user.getCompanyId())
+                .map(Company::getName).orElse(user.getCompanyId());
+        String multiPlant = "N";
+        if (user.getRoleId() != null) {
+            multiPlant = roleRepository.findById(new RoleId(user.getCompanyId(), user.getRoleId()))
+                    .map(Role::getMultiPlant).orElse("N");
+        }
+
         LoginResponse response = new LoginResponse();
         response.setAccessToken(token);
         response.setCompanyId(user.getCompanyId());
+        response.setCompanyName(companyName);
         response.setId(user.getId());
         response.setName(user.getName());
         response.setRoleId(user.getRoleId());
         response.setDepartmentId(user.getDepartmentId());
         response.setPosition(user.getPosition());
         response.setTitle(user.getTitle());
+        response.setLastLoginPlantId(user.getLastLoginPlantId());
+        response.setMultiPlant(multiPlant);
         response.setPasswordExpired(expired);
         response.setMustChangePassword(mustChange);
 

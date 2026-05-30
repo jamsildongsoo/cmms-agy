@@ -34,14 +34,17 @@ public class AuthDto {
         private String accessToken;
         private String tokenType = "Bearer";
         private String companyId;
+        private String companyName;          // PrintHeader 표시용
         private String id;
         private String name;
         private String roleId;
         private String departmentId;
         private String position;
         private String title;
-        private boolean mustChangePassword; // 강제 변경 필요(만료 또는 관리자 초기화)
-        private boolean passwordExpired;    // 만료 경과 여부(안내용)
+        private String lastLoginPlantId;     // 로그인 시 자동 해소된 활성 플랜트
+        private String multiPlant;           // 'Y'/'N' — 역할에서 resolve
+        private boolean mustChangePassword;  // 강제 변경 필요(만료 또는 관리자 초기화)
+        private boolean passwordExpired;     // 만료 경과 여부(안내용)
     }
 
     @Getter

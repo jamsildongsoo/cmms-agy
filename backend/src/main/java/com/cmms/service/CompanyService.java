@@ -127,7 +127,7 @@ public class CompanyService {
             role.setCompanyId(companyId);
             role.setId(roles[i]);
             role.setRoleName(roleNames[i]);
-            role.setMultiPlant("N");
+            role.setMultiPlant("ADMIN".equals(roles[i]) ? "Y" : "N");  // ADMIN만 멀티플랜트
             role.setCreatedBy("SYSTEM");
             role.setUpdatedBy("SYSTEM");
             roleRepository.save(role);

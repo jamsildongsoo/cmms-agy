@@ -21,4 +21,7 @@ public class Warehouse extends BaseEntity {
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
+
+    @Column(name = "plant_id", length = 50)
+    private String plantId;  // nullable = 공통부문
 }

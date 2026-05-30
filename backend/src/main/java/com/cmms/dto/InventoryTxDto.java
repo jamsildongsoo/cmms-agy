@@ -13,11 +13,16 @@ public class InventoryTxDto {
     public static class TxItem {
         private String warehouseId;
         private String inventoryId;
-        private String txTypeCode; // IN: 입고, OUT: 출고, MOVE: 이동, ADJ: 조정
+        private String txTypeCode; // IN/OUT/MOVE/ADJ
         private BigDecimal qty;
         private BigDecimal unitPrice;
         private String targetWarehouseId; // 이동 시에만 사용
         private LocalDate txDate;
+
+        // 전표번호 + 출처 (구매 입고는 docNo=STK, refModule=PUR, refNo=PR번호)
+        private String docNo;
+        private String refNo;
+        private String refModule;
     }
 
     @Getter

@@ -236,6 +236,8 @@ public class MdmService {
         user.setPosition(req.getPosition());
         user.setTitle(req.getTitle());
         user.setUseYn(req.getUseYn());
+        // 지정 플랜트 (관리자 지정 — 로그인 시 자동매핑보다 우선)
+        user.setLastLoginPlantId(req.getLastLoginPlantId());
         user.setUpdatedBy(operator);
         return userRepository.save(user);
     }
@@ -277,6 +279,7 @@ public class MdmService {
                 .filter(w -> "N".equals(w.getDeleteYn()))
                 .orElseThrow(() -> new IllegalArgumentException("저장소를 찾을 수 없습니다."));
         warehouse.setName(req.getName());
+        warehouse.setPlantId(req.getPlantId());  // nullable = 공통부문
         warehouse.setUpdatedBy(operator);
         return warehouseRepository.save(warehouse);
     }

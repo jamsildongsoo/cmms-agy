@@ -53,4 +53,7 @@ public class InventoryHistory extends BaseEntity {
 
     @Column(name = "ref_module", length = 50)
     private String refModule;
+
+    @Column(name = "doc_no", length = 50)
+    private String docNo;  // 전표번호(STK 단일 체계), IN/OUT/MOVE/ADJ 공통
 }

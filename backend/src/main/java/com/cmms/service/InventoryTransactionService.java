@@ -6,6 +6,8 @@ import com.cmms.model.*;
 import com.cmms.repository.InventoryHistoryRepository;
 import com.cmms.repository.InventoryMonthlyClosingRepository;
 import com.cmms.repository.InventoryStatusRepository;
+import com.cmms.repository.UserRepository;
+import com.cmms.security.AppModule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,12 @@ public class InventoryTransactionService {
 
     @Autowired
     private InventoryMonthlyClosingRepository inventoryMonthlyClosingRepository;
+
+    @Autowired
+    private SequenceService sequenceService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private static class StatusKey implements Comparable<StatusKey> {
         final String warehouseId;
@@ -63,6 +71,21 @@ public class InventoryTransactionService {
     public void processTransactions(String companyId, InventoryTxRequest request, String operator) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             return;
+        }
+
+        // 0. 전표번호(docNo) 일괄 부여 — items 중 하나라도 set돼 있으면 그걸 사용, 아니면 STK 신규 채번
+        String docNo = request.getItems().stream()
+                .map(TxItem::getDocNo)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        if (docNo == null) {
+            String operatorDept = userRepository.findByCompanyIdAndId(companyId, operator)
+                    .map(User::getDepartmentId).orElse(null);
+            docNo = sequenceService.generateNextNo(companyId, AppModule.STK.name(), operatorDept);
+        }
+        for (TxItem item : request.getItems()) {
+            if (item.getDocNo() == null) item.setDocNo(docNo);
         }
 
         // 1. 데드락 방지를 위한 정렬 잠금 대상 추출
@@ -150,6 +173,9 @@ public class InventoryTransactionService {
         history.setAmount(amount);
         history.setTxDate(date);
         history.setUserId(operator);
+        history.setDocNo(item.getDocNo());
+        history.setRefNo(item.getRefNo());
+        history.setRefModule(item.getRefModule());
         history.setCreatedBy(operator);
         history.setUpdatedBy(operator);
         inventoryHistoryRepository.save(history);
@@ -193,6 +219,9 @@ public class InventoryTransactionService {
         history.setAmount(amount.negate());
         history.setTxDate(date);
         history.setUserId(operator);
+        history.setDocNo(item.getDocNo());
+        history.setRefNo(item.getRefNo());
+        history.setRefModule(item.getRefModule());
         history.setCreatedBy(operator);
         history.setUpdatedBy(operator);
         inventoryHistoryRepository.save(history);
@@ -233,6 +262,7 @@ public class InventoryTransactionService {
         outHistory.setAmount(outAmount.negate());
         outHistory.setTxDate(date);
         outHistory.setUserId(operator);
+        outHistory.setDocNo(item.getDocNo());
         outHistory.setCreatedBy(operator);
         outHistory.setUpdatedBy(operator);
         
@@ -264,7 +294,8 @@ public class InventoryTransactionService {
         inHistory.setTxDate(date);
         inHistory.setUserId(operator);
         inHistory.setRefNo(outHistory.getHistoryNo().toString());
-        inHistory.setRefModule("INVENTORY");
+        inHistory.setRefModule("MOVE");
+        inHistory.setDocNo(item.getDocNo());
         inHistory.setCreatedBy(operator);
         inHistory.setUpdatedBy(operator);
         inventoryHistoryRepository.save(inHistory);
@@ -309,6 +340,9 @@ public class InventoryTransactionService {
         history.setAmount(adjAmount);
         history.setTxDate(date);
         history.setUserId(operator);
+        history.setDocNo(item.getDocNo());
+        history.setRefNo(item.getRefNo());
+        history.setRefModule(item.getRefModule());
         history.setCreatedBy(operator);
         history.setUpdatedBy(operator);
         inventoryHistoryRepository.save(history);
